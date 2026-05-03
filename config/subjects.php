@@ -1,0 +1,32 @@
+<?php
+
+return [
+    'necta_short' => [
+        'PHYSICS' => 'PHY',
+        'CHEMISTRY' => 'CHEM',
+        'BIOLOGY' => 'BIO',
+        'MATHEMATICS' => 'MATH',
+        'BASIC APPLIED MATHEMATICS' => 'BAM',
+        'ADVANCED MATHEMATICS' => 'AMATH',
+        'ENGLISH LANGUAGE' => 'ENG',
+        'KISWAHILI' => 'KISW',
+        'HISTORY' => 'HIST',
+        'GEOGRAPHY' => 'GEO',
+        'ACCOUNTANCY' => 'ACC',
+        'COMMERCE' => 'COMM',
+        'BUSINESS STUDIES' => 'BS',
+        'FOOD & HUMAN NUTRITION' => 'FHN',
+        'GENERAL STUDIES' => 'GS',
+        'ACADEMIC COMMUNICATION' => 'ACOM',
+        'HISTORIA YA TANZANIA NA MAADILI' => 'HTM',
+        'ECONOMICS' => 'ECO',
+        'CIVICS' => 'CIV',
+        'BASIC MATHEMATICS' => 'MATH',
+        'BOOK-KEEPING' => 'BK',
+        'ICT' => 'ICT',
+        'BIBILE KNOWLEDGE' => 'BIB',
+        'LITERATURE' => 'LIT',
+        'COMPUTER SCIENCE' => 'CS',
+        'HISTORIA YA TANZANIA & MAADILI' => 'HTM',
+    ],
+];

@@ -1,0 +1,41 @@
+:root {
+    /* Primary brand blues */
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-50: #eff6ff;
+
+    /* Neutral colors */
+    --color-white: #ffffff;
+    --color-slate-300: #94a3b8;
+    --color-slate-500: #64748b;
+    --color-slate-600: #475569;
+
+    /* Shared rgba helpers */
+    --color-primary-500-rgb: 59, 130, 246;
+    --color-primary-600-rgb: 37, 99, 235;
+
+    /* Semantic theme tones */
+    --color-success-500: #10b981;
+    --color-success-700: #047857;
+    --color-info-500: #0ea5e9;
+    --color-warning-500: #f59e0b;
+    --color-warning-700: #b45309;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
+    --color-dark-800: #232c3a;
+    --color-dark-900: #1b2230;
+
+    --color-success-500-rgb: 16, 185, 129;
+    --color-success-700-rgb: 4, 120, 87;
+    --color-info-500-rgb: 14, 165, 233;
+    --color-warning-500-rgb: 245, 158, 11;
+    --color-warning-700-rgb: 180, 83, 9;
+    --color-danger-500-rgb: 239, 68, 68;
+    --color-danger-600-rgb: 220, 38, 38;
+    --color-dark-800-rgb: 35, 44, 58;
+    --color-dark-900-rgb: 27, 34, 48;
+}

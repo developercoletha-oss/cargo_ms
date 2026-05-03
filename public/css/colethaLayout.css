@@ -1,0 +1,85 @@
+/*
+|--------------------------------------------------------------------------
+| O-Level Dashboard Layout Styles
+|--------------------------------------------------------------------------
+*/
+html {
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+body {
+    font-family: "Segoe UI", "Trebuchet MS", Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-top: var(--header-height);
+    padding-left: var(--sidebar-width);
+    overflow-x: hidden;
+    transition: padding-left 0.3s ease;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+body.sidebar-collapsed {
+    padding-left: var(--sidebar-collapsed-width);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.coletha-page-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    scroll-behavior: smooth;
+}
+
+.coletha-page-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0 0 1.5rem;
+}
+
+.coletha-page-body > .container,
+.coletha-page-body > .container-fluid {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.coletha-page-body .row {
+    min-width: 0;
+}
+
+.coletha-page-body [class*="col-"] {
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-left: 0;
+    }
+
+    .coletha-page-body {
+        padding-bottom: 1rem;
+    }
+}
+

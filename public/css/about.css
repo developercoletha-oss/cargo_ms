@@ -1,0 +1,353 @@
+.about-page {
+    padding-top: 7rem;
+    padding-bottom: 4.5rem;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 42%, #f8fbff 100%);
+}
+
+.about-hero-card,
+.about-stat-card,
+.about-value-card {
+    background: #ffffff;
+    border: 1px solid rgba(59, 130, 246, 0.16);
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08);
+}
+
+.about-hero-card {
+    padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.about-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.about-title {
+    max-width: 820px;
+    font-size: 2.65rem;
+    line-height: 1.12;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+.about-copy {
+    color: #64748b;
+    line-height: 1.72;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.about-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.8rem;
+}
+
+.about-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    color: #334155;
+    font-size: 0.96rem;
+    line-height: 1.58;
+}
+
+.about-list i {
+    color: #2563eb;
+}
+
+.about-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.about-stat-card {
+    padding: clamp(0.95rem, 2vw, 1.15rem);
+}
+
+.about-stat-card i {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    margin-bottom: 0.55rem;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    font-size: 1rem;
+}
+
+.about-stat-card strong {
+    display: block;
+    font-size: 1.3rem;
+    color: #1d4ed8;
+    line-height: 1.1;
+}
+
+.about-stat-card span {
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.about-section-title {
+    font-size: 1.45rem;
+    line-height: 1.22;
+    font-weight: 800;
+    margin-bottom: 0.9rem;
+    letter-spacing: -0.01em;
+}
+
+.about-value-card {
+    padding: clamp(1rem, 2vw, 1.2rem);
+    height: 100%;
+}
+
+.about-value-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    margin-bottom: 0.7rem;
+}
+
+.about-value-card h3 {
+    font-size: 1.05rem;
+    line-height: 1.28;
+    margin-bottom: 0.45rem;
+}
+
+.about-value-card p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.94rem;
+    line-height: 1.7;
+}
+
+.about-stack-card,
+.about-developer-card {
+    background: #ffffff;
+    border: 1px solid rgba(59, 130, 246, 0.16);
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08);
+    padding: clamp(1rem, 2.4vw, 1.4rem);
+    height: 100%;
+}
+
+.about-stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+    gap: 0.85rem;
+}
+
+.about-stack-item {
+    border: 1px solid rgba(59, 130, 246, 0.16);
+    border-radius: 14px;
+    padding: 0.8rem 0.7rem;
+    text-align: center;
+    background: #f8fbff;
+}
+
+.about-stack-item i {
+    font-size: 1.25rem;
+    color: #2563eb;
+    display: inline-block;
+    margin-bottom: 0.3rem;
+}
+
+.about-stack-item span {
+    display: block;
+    font-size: 0.86rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.about-developer-card p {
+    margin: 0 0 0.8rem;
+    color: #64748b;
+    line-height: 1.7;
+    font-size: 0.96rem;
+}
+
+.about-developer-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.about-developer-meta span {
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #1d4ed8;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+    .about-page {
+        padding-top: 5.5rem;
+        padding-bottom: 3.75rem;
+    }
+
+    .about-title {
+        font-size: 2.2rem;
+        line-height: 1.14;
+    }
+
+    .about-copy {
+        font-size: 0.98rem;
+    }
+
+    .about-section-title {
+        font-size: 1.35rem;
+    }
+
+    .about-stat-card strong {
+        font-size: 1.2rem;
+    }
+
+    .about-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .about-page {
+        padding-top: 4.75rem;
+        padding-bottom: 3rem;
+    }
+
+    .about-page .container {
+        max-width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .about-stat-grid {
+        gap: 0.75rem;
+    }
+
+    .about-title {
+        font-size: 1.85rem;
+        line-height: 1.16;
+        letter-spacing: -0.01em;
+    }
+
+    .about-copy,
+    .about-list li,
+    .about-developer-card p {
+        font-size: 0.92rem;
+        line-height: 1.62;
+    }
+
+    .about-section-title {
+        font-size: 1.22rem;
+        line-height: 1.25;
+    }
+
+    .about-value-card h3 {
+        font-size: 1rem;
+    }
+
+    .about-value-card p {
+        font-size: 0.9rem;
+        line-height: 1.62;
+    }
+
+    .about-section-title {
+        width: 100%;
+    }
+
+    .about-page .btn {
+        width: 100%;
+        justify-content: center;
+        padding-top: 0.72rem;
+        padding-bottom: 0.72rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .about-page {
+        padding-top: 4.25rem;
+    }
+
+    .about-hero-card,
+    .about-stat-card,
+    .about-value-card,
+    .about-stack-card,
+    .about-developer-card {
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+    }
+
+    .about-stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .about-stat-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 0.85rem;
+        align-items: center;
+    }
+
+    .about-stat-card i {
+        grid-row: span 2;
+        margin-bottom: 0;
+    }
+
+    .about-stat-card strong {
+        font-size: 1.05rem;
+    }
+
+    .about-stat-card span {
+        font-size: 0.82rem;
+    }
+
+    .about-title {
+        font-size: 1.65rem;
+        line-height: 1.18;
+    }
+
+    .about-kicker {
+        font-size: 0.72rem;
+    }
+
+    .about-list {
+        gap: 0.7rem;
+    }
+
+    .about-stack-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+
+    .about-stack-item {
+        padding: 0.7rem 0.5rem;
+    }
+
+    .about-developer-meta {
+        display: flex;
+        width: 100%;
+    }
+}
