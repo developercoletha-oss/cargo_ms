@@ -24,13 +24,9 @@
                 <div class="dashboard-panel__header">
                     <div>
                         <span class="dashboard-panel__eyebrow">Quick Summary</span>
-                        <h3 class="dashboard-panel__title">
-                            @if(isset($user) && $user->country)
-                                Overview for {{ strtoupper($user->country) }}
-                            @else
+                         <h3 class="dashboard-panel__title">
                                 System Overview
-                            @endif
-                        </h3>
+                         </h3>
                     </div>
                     @if(isset($user) && $user->country && in_array($user->role, ['admin','hgadmin','manager','staff']))
                     <div class="d-flex gap-2 align-items-center">
