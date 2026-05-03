@@ -103,7 +103,15 @@ http://127.0.0.1:8000
 
 1. Set up your database and update `.env` file
 2. Run migrations to create tables
-3. Create an admin user via tinker or seeder
+3. **Create an admin user via seeder:**
+   ```bash
+   php artisan db:seed --class=AdminSeeder
+   ```
+   Or update `.env` with your preferred credentials:
+   ```env
+   ADMIN_EMAIL=your-email@test.com
+   ADMIN_PASSWORD=your-secure-password
+   ```
 4. Log into `/dashboard` to configure settings
 5. Set up your fleet (vehicles and drivers)
 6. Configure tax rates and invoice templates

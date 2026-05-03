@@ -23,6 +23,8 @@ class User extends Authenticatable
         'role',
         'address',
         'company_name',
+        'country',
+        'timezone',
         'is_active',
         'password',
         'last_login_at',

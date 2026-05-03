@@ -24,8 +24,21 @@
                 <div class="dashboard-panel__header">
                     <div>
                         <span class="dashboard-panel__eyebrow">Quick Summary</span>
-                        <h3 class="dashboard-panel__title">System Overview</h3>
+                        <h3 class="dashboard-panel__title">
+                            @if(isset($user) && $user->country)
+                                Overview for {{ strtoupper($user->country) }}
+                            @else
+                                System Overview
+                            @endif
+                        </h3>
                     </div>
+                    @if(isset($user) && $user->country && in_array($user->role, ['admin','hgadmin','manager','staff']))
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-eye"></i> View All Shipments
+                        </a>
+                    </div>
+                    @endif
                 </div>
 
                 <div class="row g-3">
@@ -46,6 +59,71 @@
             </section>
         </div>
     </div>
+
+    @if(isset($recentShipments) && $recentShipments->isNotEmpty())
+    <div class="row g-3 g-xl-4 mb-4">
+        <div class="col-12">
+            <section class="dashboard-panel">
+                <div class="dashboard-panel__header">
+                    <div>
+                        <span class="dashboard-panel__eyebrow">Recent Activity</span>
+                        <h3 class="dashboard-panel__title">Latest Shipments</h3>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-outline-primary btn-sm">
+                            View All
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Route</th>
+                                <th>Status</th>
+                                <th>Assigned To</th>
+                                <th>Created</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($recentShipments as $shipment)
+                            <tr>
+                                <td>
+                                    <strong>{{ $shipment->tracking_number }}</strong>
+                                </td>
+                                <td>
+                                    {{ $shipment->origin_country }} → {{ $shipment->destination_country }}
+                                </td>
+                                <td>
+                                    @php
+                                        $statusClass = match($shipment->status) {
+                                            'delivered' => 'success',
+                                            'in_transit' => 'primary',
+                                            'pending' => 'warning',
+                                            'cancelled' => 'danger',
+                                            default => 'secondary'
+                                        };
+                                    @endphp
+                                    <span class="badge bg-{{ $statusClass }}">{{ ucfirst(str_replace('_', ' ', $shipment->status)) }}</span>
+                                </td>
+                                <td>{{ $shipment->assignedUser?->name ?? 'Unassigned' }}</td>
+                                <td>{{ $shipment->created_at->diffForHumans() }}</td>
+                                <td>
+                                    <a href="{{ route('dashboard.shipments.index') }}?search={{ $shipment->tracking_number }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-search"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+    @endif
 
     <div class="row g-3 g-xl-4">
         <div class="col-lg-8">

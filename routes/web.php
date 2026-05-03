@@ -3,6 +3,7 @@
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\ProfileController;
+use App\Http\Controllers\Dashboard\ShipmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -22,6 +23,11 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     // Profile
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    
+    // Shipments (role-based access)
+    Route::middleware('role:admin,hgadmin,manager,staff')->group(function () {
+        Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+    });
 });
 
 Route::get('/e-learning', fn () => redirect()->route('login'))->name('e-learning');

@@ -6,6 +6,8 @@
     $headerNotifications = $notificationSource ? $notificationSource->latest()->limit(6)->get() : collect();
     $headerUnreadCount = $notificationSource ? (clone $notificationSource)->where('status', 'unread')->count() : 0;
     $displayName = $currentUser->full_name ?? $currentUser->name ?? 'User';
+    $userCountry = $currentUser?->country;
+    $userRole = $currentUser?->role;
 @endphp
 
 <header id="main-header" class="d-flex align-items-center justify-content-between bg-white border-bottom shadow-sm px-3">
@@ -37,6 +39,32 @@
                     <div class="fw-semibold">Quick Access</div>
                     <div class="text-muted small">Jump to sections.</div>
                 </div>
+                <div class="py-2">
+                    <a href="{{ route('dashboard.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-speedometer2 header-theme-icon"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    @if(in_array($userRole, ['admin', 'hgadmin', 'manager', 'staff']))
+                    <a href="{{ route('dashboard.shipments.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-box-seam"></i> Shipments
+                    </a>
+                    @endif
+                    <a href="{{ route('dashboard.notifications.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-bell header-theme-icon"></i>
+                        <span>Notifications</span>
+                    </a>
+                    <a href="{{ route('dashboard.profile.show') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-person header-theme-icon"></i> My Profile
+                    </a>
+                </div>
+                @if($userCountry)
+                <div class="px-3 py-2 border-top bg-light text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-geo-alt"></i> Operating in {{ strtoupper($userCountry) }}
+                    </small>
+                </div>
+                @endif
+            </div>
                 <div class="py-2">
                     <a href="{{ route('dashboard.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
                         <i class="bi bi-speedometer2 header-theme-icon"></i>
@@ -117,7 +145,14 @@
                 @else
                     <img src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=2563eb&color=fff&size=40" alt="Profile Picture" class="profile-avatar" />
                 @endif
-                <span class="ms-2 d-none d-md-inline fw-normal header-user-name">{{ $displayName }}</span>
+                <span class="ms-2 d-none d-md-inline fw-normal header-user-name">
+                    {{ $displayName }}
+                    @if($userCountry)
+                        <span class="badge bg-light text-dark border ms-1">
+                            <i class="bi bi-globe"></i> {{ strtoupper($userCountry) }}
+                        </span>
+                    @endif
+                </span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                 <li>
