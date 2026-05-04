@@ -214,10 +214,10 @@
                     </p>
                     <div class="home-hero-actions">
                         <a href="/login" class="btn btn-primary btn-premium shadow-lg">
-                            Get Started Free <i class="bi bi-rocket-takeoff ms-2"></i>
+                            Get Started
                         </a>
                         <a href="{{ route('about') }}" class="btn btn-outline-dark btn-premium">
-                            <i class="bi bi-play-circle me-2"></i> See It In Action
+                            <i class="bi bi-grid-3x3-gap me-2"></i> Explore the Platform
                         </a>
                     </div>
 
@@ -261,7 +261,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm p-4 significance-card">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="bg-success bg-opacity-10 text-success p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-file-earmark-check-fill"></i>
                             </div>
                             <h5 class="fw-bold mb-0">Zero Paperwork Errors</h5>
@@ -273,7 +273,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm p-4 significance-card">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="bg-info bg-opacity-10 text-info p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-eye-fill"></i>
                             </div>
                             <h5 class="fw-bold mb-0">Full Visibility & Control</h5>
@@ -285,7 +285,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm p-4 significance-card">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-star-fill"></i>
                             </div>
                             <h5 class="fw-bold mb-0">Delight Your Customers</h5>
@@ -297,7 +297,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm p-4 significance-card">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-graph-up-arrow"></i>
                             </div>
                             <h5 class="fw-bold mb-0">Data-Driven Decisions</h5>
