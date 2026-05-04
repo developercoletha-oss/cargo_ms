@@ -47,7 +47,7 @@
             right: -50%;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             pointer-events: none;
         }
 
@@ -58,7 +58,7 @@
             left: 0;
             width: 100%;
             height: 200px;
-            background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.2), transparent);
             pointer-events: none;
         }
 
@@ -78,7 +78,7 @@
             height: 48px;
             border-radius: 12px;
             object-fit: contain;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .auth-login-brand span {
@@ -324,15 +324,30 @@
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
-            color: #475569;
-            text-decoration: none;
+            color: #1e293b;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            padding: 0.5rem 0.9rem;
+            text-decoration: none !important;
+            border-bottom: 0 !important;
+            box-shadow: none !important;
             font-size: 0.92rem;
             font-weight: 600;
+            transition: all 0.2s ease;
         }
 
-        .auth-login-home-link:hover {
-            color: #1e293b;
-            text-decoration: underline;
+        .auth-login-home-link:hover,
+        .auth-login-home-link:focus,
+        .auth-login-home-link:active {
+            color: #0f172a;
+            background: #e2e8f0;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+            text-decoration: none !important;
+            border-bottom: 0 !important;
+            box-shadow: none !important;
+            outline: none;
         }
 
         .auth-login-back-link {
@@ -419,6 +434,7 @@
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -435,52 +451,56 @@
     <section class="auth-page auth-login-page">
         <div class="auth-login-frame">
             <div class="auth-login-shell">
- <aside class="auth-login-brand-panel">
-                      <div class="auth-login-brand">
-                          <img src="{{ asset('img/MYLOGO.png') }}" alt="CFTMS Logo" class="auth-login-brand-img">
-                          <span>
-                              <strong>CFTMS</strong>
-                              <small>Cargo and Freight Tracking Management System</small>
-                          </span>
-                      </div>
+                <aside class="auth-login-brand-panel">
+                    <div class="auth-login-brand">
+                        <img src="{{ asset('img/MYLOGO.png') }}" alt="CFTMS Logo" class="auth-login-brand-img">
+                        <span>
+                            <strong>CFTMS</strong>
+                            <small>Cargo and Freight Tracking Management System</small>
+                        </span>
+                    </div>
 
-                       <div class="auth-login-copy">
-                            <h1>Welcome back to your cargo operations.</h1>
-                            <p class="auth-login-description">
-                                Sign in to manage shipments and keep your logistics in one place.
-                            </p>
-                            <div class="auth-login-instructions">
-                                <p><i class="bi bi-envelope"></i> Enter your email address.</p>
-                                <p><i class="bi bi-key"></i> Type your password.</p>
-                                <p><i class="bi bi-box-arrow-in-right"></i> Click Login to continue.</p>
-                            </div>
+                    <div class="auth-login-copy">
+                        <h1>Welcome back to your cargo operations.</h1>
+                        <p class="auth-login-description">
+                            Sign in to manage shipments and keep your logistics in one place.
+                        </p>
+                        <div class="auth-login-instructions">
+                            <p><i class="bi bi-envelope"></i> Enter your email address.</p>
+                            <p><i class="bi bi-key"></i> Type your password.</p>
+                            <p><i class="bi bi-box-arrow-in-right"></i> Click Login to continue.</p>
                         </div>
-                  </aside>
+                    </div>
+                </aside>
 
                 <div class="auth-login-form-panel">
                     <div class="auth-login-form-card">
-<div class="auth-login-title-row">
-                             <h2 class="auth-login-title">
-                                 <i class="bi bi-box-seal"></i>
-                                 <span>Login</span>
-                             </h2>
-                         </div>
+                        <div class="auth-login-title-row">
+                            <h2 class="auth-login-title">
+                                <i class="bi bi-box-seal"></i>
+                                <span>Login</span>
+                            </h2>
+                        </div>
 
-                           <p class="auth-login-subtitle">Enter your credentials to access the cargo management system.</p>
+                        <p class="auth-login-subtitle">Enter your credentials to access the cargo management system.</p>
 
                         @include('auth.partials.feedback')
 
-                        <a href="{{ route('register') }}" class="auth-register-link" style="position: absolute; top: 1.5rem; right: 1.5rem; font-size: 0.9rem; color: #6b7280; text-decoration: none;">
-                            <i class="bi bi-person-plus"></i> <span style="text-decoration: underline;">Create Account</span>
+                        <a href="{{ route('register') }}" class="auth-register-link"
+                            style="position: absolute; top: 1.5rem; right: 1.5rem; font-size: 0.9rem; color: #6b7280; text-decoration: none;">
+                            <i class="bi bi-person-plus"></i> <span style="text-decoration: underline;">Create
+                                Account</span>
                         </a>
 
-                        <form method="POST" action="{{ route('login.submit') }}" class="auth-form auth-login-form" data-auth-form>
+                        <form method="POST" action="{{ route('login.submit') }}" class="auth-form auth-login-form"
+                            data-auth-form>
                             @csrf
 
                             <div class="auth-input-group">
                                 <label for="email">Email address</label>
                                 <div class="auth-input-wrap auth-login-input @error('email') is-invalid @enderror">
-                                    <input id="email" type="email" name="email" value="{{ old('email') }}" placeholder="user@example.test" required autocomplete="email" autofocus>
+                                    <input id="email" type="email" name="email" value="{{ old('email') }}"
+                                        placeholder="user@example.test" required autocomplete="email" autofocus>
                                 </div>
                                 @error('email')
                                     <div class="auth-field-error">{{ $message }}</div>
@@ -490,8 +510,10 @@
                             <div class="auth-input-group">
                                 <label for="password">Password</label>
                                 <div class="auth-input-wrap auth-login-input @error('password') is-invalid @enderror">
-                                    <input id="password" type="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-                                    <button type="button" class="auth-password-toggle" data-password-toggle="password" aria-label="Toggle password visibility">
+                                    <input id="password" type="password" name="password" placeholder="Enter your password"
+                                        required autocomplete="current-password">
+                                    <button type="button" class="auth-password-toggle" data-password-toggle="password"
+                                        aria-label="Toggle password visibility">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
@@ -502,13 +524,16 @@
 
                             <div class="auth-form-meta auth-login-meta">
                                 <label class="auth-checkbox" for="remember">
-                                    <input id="remember" type="checkbox" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
+                                    <input id="remember" type="checkbox" name="remember" value="1"
+                                        {{ old('remember') ? 'checked' : '' }}>
                                     <span>Remember me</span>
                                 </label>
-                                <a href="{{ route('password.request') }}" class="auth-link" data-inline-spinner-link data-loading-text="Opening...">Forgot Password?</a>
+                                <a href="{{ route('password.request') }}" class="auth-link" data-inline-spinner-link
+                                    data-loading-text="Opening...">Forgot Password?</a>
                             </div>
 
-                            <button type="submit" class="btn-brand auth-login-button auth-forgot-button" data-auth-submit data-loading-text="Logging in...">
+                            <button type="submit" class="btn-brand auth-login-button auth-forgot-button" data-auth-submit
+                                data-loading-text="Logging in...">
                                 <span data-auth-submit-label>Login</span>
                             </button>
                         </form>
@@ -520,10 +545,12 @@
                             </p>
                         </div>
 
-                        <div class="auth-login-home-wrap" style="width: 100%; display: flex; justify-content: center; text-align: center;">
-                            <a href="{{ route('home') }}" class="auth-login-home-link" style="display: inline-flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-arrow-left"></i>
-                                <span>Back to Home</span>
+                        <div class="auth-login-home-wrap"
+                            style="width: 100%; display: flex; justify-content: center; text-align: center;">
+                            <a href="{{ route('home') }}" class="auth-login-home-link"
+                                style="display:inline-flex;align-items:center;justify-content:center;gap:.45rem;color:#1e293b;background:transparent;border:none;border-radius:0;padding:0;text-decoration:none !important;border-bottom:0 !important;box-shadow:none !important;font-size:.92rem;font-weight:600;line-height:1;">
+                                <i class="bi bi-arrow-left" style="text-decoration:none !important;"></i>
+                                <span style="text-decoration:none !important;">Back to Home</span>
                             </a>
                         </div>
                     </div>
