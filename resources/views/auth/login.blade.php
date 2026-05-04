@@ -486,12 +486,6 @@
 
                         @include('auth.partials.feedback')
 
-                        <a href="{{ route('register') }}" class="auth-register-link"
-                            style="position: absolute; top: 1.5rem; right: 1.5rem; font-size: 0.9rem; color: #6b7280; text-decoration: none;">
-                            <i class="bi bi-person-plus"></i> <span style="text-decoration: underline;">Create
-                                Account</span>
-                        </a>
-
                         <form method="POST" action="{{ route('login.submit') }}" class="auth-form auth-login-form"
                             data-auth-form>
                             @csrf
