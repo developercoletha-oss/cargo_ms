@@ -15,13 +15,7 @@
             </div>
             <div class="coletha-sidebar-brand-text">
                 <div class="coletha-sidebar-brand-title">CFTMS</div>
-                <div class="coletha-sidebar-brand-subtitle">
-                    @if($currentUser && $currentUser->country)
-                        {{ strtoupper($currentUser->country) }} Hub
-                    @else
-                        Cargo and Freight Tracking
-                    @endif
-                </div>
+                <div class="coletha-sidebar-brand-subtitle">Cargo and Freight Tracking</div>
             </div>
         </div>
         <ul class="nav flex-column">
@@ -85,12 +79,7 @@
             @endif
 
             <div class="coletha-sidebar-footer">
-                <div class="coletha-sidebar-footer__copy">&copy; 2025 CFTMS Kit</div>
-                @if($currentUser && $currentUser->country)
-                <div class="coletha-sidebar-footer__region">
-                    <i class="bi bi-geo-alt"></i> {{ strtoupper($currentUser->country) }}
-                </div>
-                @endif
+                <div class="coletha-sidebar-footer__copy">&copy; 2026 CFTMS Kit</div>
             </div>
         </ul>
     </div>

@@ -10,7 +10,7 @@
     <section class="about-page">
         <div class="container">
             <div class="row g-4 align-items-stretch mb-4">
-                <div class="col-lg-7">
+                <div class="col-lg-12">
                     <div class="about-hero-card h-100">
                         <span class="about-kicker"><i class="bi bi-stars"></i> About CFTMS</span>
                         <h1 class="about-title">A complete Cargo and Freight Tracking Management System for local transport companies.</h1>
@@ -25,35 +25,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="col-lg-5">
-                    <div class="about-stat-grid">
-                        <div class="about-stat-card">
-                            <i class="bi bi-layers"></i>
-                            <strong>Laravel 12</strong>
-                            <span>Modern framework baseline</span>
-                        </div>
-                        <div class="about-stat-card">
-                            <i class="bi bi-bootstrap-fill"></i>
-                            <strong>Bootstrap 5</strong>
-                            <span>Responsive UI foundation</span>
-                        </div>
-                        <div class="about-stat-card">
-                            <i class="bi bi-shield-check"></i>
-                            <strong>Auth Ready</strong>
-                            <span>Login and recovery flow included</span>
-                        </div>
-                        <div class="about-stat-card">
-                            <i class="bi bi-lightning-charge"></i>
-                            <strong>Clean DX</strong>
-                            <span>Simple structure for easy extension</span>
-                        </div>
-                        <div class="about-stat-card">
-                            <i class="bi bi-grid-1x2"></i>
-                            <strong>Starter Dashboard</strong>
-                            <span>Ready admin layout with sidebar and core pages</span>
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
