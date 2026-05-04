@@ -30,9 +30,6 @@
 
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                 <h2 class="about-section-title mb-0">Built for Transport Professionals</h2>
-                <a href="{{ route('home') }}" class="btn btn-outline-primary px-4">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Home
-                </a>
             </div>
 
             <div class="row g-3">
@@ -99,6 +96,12 @@
                         </div>
                     </article>
                 </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{{ route('home') }}" class="btn btn-outline-primary px-4 about-back-home-btn">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Home
+                </a>
             </div>
         </div>
     </section>

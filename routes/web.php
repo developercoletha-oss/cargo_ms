@@ -4,6 +4,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\ShipmentController;
+use App\Http\Controllers\Dashboard\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -27,6 +28,11 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     // Shipments (role-based access)
     Route::middleware('role:admin,hgadmin,manager,staff')->group(function () {
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+    });
+
+    // User Management (admin + hgadmin)
+    Route::middleware('role:admin,hgadmin')->group(function () {
+        Route::resource('users', UserManagementController::class)->names('users');
     });
 });
 

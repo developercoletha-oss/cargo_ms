@@ -1,7 +1,7 @@
 @php
     $currentUser = Auth::user();
     $userRole = $currentUser?->role ?? 'user';
-    $isAdministrationMenuOpen = request()->is('dashboard/profile*') || request()->is('dashboard/settings*');
+    $isAdministrationMenuOpen = request()->is('dashboard/profile*') || request()->is('dashboard/settings*') || request()->is('dashboard/users*');
     $isMonitoringMenuOpen = request()->is('dashboard/notifications*');
     $isShipmentsMenuOpen = request()->is('dashboard/shipments*');
 @endphp
@@ -44,6 +44,13 @@
 
             @if(in_array($userRole, ['admin', 'hgadmin']))
             <li class="nav-item">
+                <a href="{{ route('dashboard.users.index') }}"
+                    class="nav-link {{ request()->is('dashboard/users*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i> User Management
+                </a>
+            </li>
+
+            <li class="nav-item">
                 <a href="#" 
                     class="nav-link {{ $isAdministrationMenuOpen ? '' : '' }}" 
                     data-bs-toggle="collapse" 
@@ -59,13 +66,6 @@
                                 <i class="bi bi-person"></i> My Profile
                             </a>
                         </li>
-                        @can('manage-users')
-                        <li class="nav-item">
-                            <a href="#" class="nav-link">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        @endcan
                     </ul>
                 </div>
             </li>

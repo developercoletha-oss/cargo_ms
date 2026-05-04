@@ -411,14 +411,14 @@
                     </div>
 
                     <div class="auth-register-copy">
-                        <h1>Join the cargo network today.</h1>
+                        <h1>Create your customer account.</h1>
                         <p class="auth-register-description">
                             Create an account to start managing shipments and tracking your freight operations.
                         </p>
                         <div class="auth-register-instructions">
-                            <p><i class="bi bi-person"></i> Enter your full name.</p>
-                            <p><i class="bi bi-envelope"></i> Provide your email address.</p>
-                            <p><i class="bi bi-key"></i> Set a secure password.</p>
+                            <p><i class="bi bi-person"></i> Fill all business profile details.</p>
+                            <p><i class="bi bi-shield-check"></i> Wait for admin approval.</p>
+                            <p><i class="bi bi-envelope-check"></i> Receive approval email then login.</p>
                         </div>
                     </div>
                 </aside>
@@ -432,7 +432,7 @@
                             </h2>
                         </div>
 
-                        <p class="auth-register-subtitle">Sign up for a new CFTMS account.</p>
+                        <p class="auth-register-subtitle">Register as customer. Account will stay pending until admin approval.</p>
 
                          @include('auth.partials.feedback')
 
@@ -440,7 +440,7 @@
                             <i class="bi bi-arrow-left"></i> <span style="text-decoration: underline;">Back to Login</span>
                         </a>
 
-                        <form method="POST" action="{{ route('register') }}" class="auth-form auth-register-form" data-auth-form>
+                        <form method="POST" action="{{ route('register.submit') }}" class="auth-form auth-register-form" data-auth-form>
                             @csrf
 
                             <div class="auth-input-group">
@@ -454,11 +454,11 @@
                             </div>
 
                             <div class="auth-input-group">
-                                <label for="name">Username</label>
-                                <div class="auth-input-wrap auth-register-input @error('name') is-invalid @enderror">
-                                    <input id="name" type="text" name="name" value="{{ old('name') }}" placeholder="johndoe" required autocomplete="username">
+                                <label for="phone">Phone Number</label>
+                                <div class="auth-input-wrap auth-register-input @error('phone') is-invalid @enderror">
+                                    <input id="phone" type="text" name="phone" value="{{ old('phone') }}" placeholder="+2557XXXXXXXX" required autocomplete="tel">
                                 </div>
-                                @error('name')
+                                @error('phone')
                                     <div class="auth-field-error">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -469,6 +469,36 @@
                                     <input id="email" type="email" name="email" value="{{ old('email') }}" placeholder="user@example.test" required autocomplete="email">
                                 </div>
                                 @error('email')
+                                    <div class="auth-field-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="company_name">Company Name</label>
+                                <div class="auth-input-wrap auth-register-input @error('company_name') is-invalid @enderror">
+                                    <input id="company_name" type="text" name="company_name" value="{{ old('company_name') }}" placeholder="ABC Logistics Ltd" required>
+                                </div>
+                                @error('company_name')
+                                    <div class="auth-field-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="country">Country Code</label>
+                                <div class="auth-input-wrap auth-register-input @error('country') is-invalid @enderror">
+                                    <input id="country" type="text" name="country" value="{{ old('country') }}" placeholder="TZ" maxlength="2" required>
+                                </div>
+                                @error('country')
+                                    <div class="auth-field-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="address">Business Address</label>
+                                <div class="auth-input-wrap auth-register-input @error('address') is-invalid @enderror">
+                                    <textarea id="address" name="address" rows="3" placeholder="Street, city, region" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; outline: none;">{{ old('address') }}</textarea>
+                                </div>
+                                @error('address')
                                     <div class="auth-field-error">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -505,4 +535,8 @@
             </div>
         </div>
     </section>
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('js/colethaAuth.js') }}"></script>
 @endsection

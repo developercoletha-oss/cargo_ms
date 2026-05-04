@@ -202,6 +202,16 @@
     font-weight: 700;
 }
 
+.about-back-home-btn {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1050;
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+}
+
 @media (max-width: 991.98px) {
     .about-page {
         padding-top: 5.5rem;
@@ -283,6 +293,12 @@
         padding-top: 0.72rem;
         padding-bottom: 0.72rem;
         font-size: 0.9rem;
+    }
+
+    .about-page .about-back-home-btn {
+        width: auto;
+        right: 1rem;
+        bottom: 1rem;
     }
 }
 

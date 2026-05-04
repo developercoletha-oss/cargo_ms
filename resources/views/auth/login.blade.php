@@ -167,6 +167,9 @@
         .auth-login-form-card {
             width: 100%;
             max-width: 420px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .auth-login-title-row {
@@ -304,18 +307,44 @@
         }
 
         .auth-login-back-wrap {
-            margin-top: 1.5rem;
+            margin-top: auto;
+            padding-top: 1.5rem;
             text-align: center;
         }
 
-        .auth-login-back-link {
+        .auth-login-home-wrap {
+            margin-top: 0.75rem;
+            display: flex;
+            width: 100%;
+            justify-content: center !important;
+            text-align: center;
+        }
+
+        .auth-login-home-link {
             display: inline-flex;
             align-items: center;
+            gap: 0.45rem;
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .auth-login-home-link:hover {
+            color: #1e293b;
+            text-decoration: underline;
+        }
+
+        .auth-login-back-link {
+            display: flex;
+            align-items: center;
             gap: 0.5rem;
+            width: 100%;
             color: #6b7280;
             text-decoration: none;
             font-size: 0.9rem;
             transition: color 0.2s ease;
+            justify-content: center;
         }
 
         .auth-login-back-link:hover {
@@ -485,8 +514,16 @@
                         </form>
 
                         <div class="auth-login-back-wrap">
-                            <a href="{{ route('home') }}" class="auth-login-back-link">
-                                <i class="bi bi-arrow-left"></i> Back to Home
+                            <p style="margin-bottom: 0.75rem; color: #64748b; font-size: 0.92rem;">
+                                Don't have an account?
+                                <a href="{{ route('register') }}" class="auth-link">Create account</a>
+                            </p>
+                        </div>
+
+                        <div class="auth-login-home-wrap" style="width: 100%; display: flex; justify-content: center; text-align: center;">
+                            <a href="{{ route('home') }}" class="auth-login-home-link" style="display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-arrow-left"></i>
+                                <span>Back to Home</span>
                             </a>
                         </div>
                     </div>

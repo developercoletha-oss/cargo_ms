@@ -29,6 +29,13 @@ class LoginController extends Controller
         ]);
 
         $remember = $request->boolean('remember');
+        $user = User::where('email', $credentials['email'])->first();
+
+        if ($user && ! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => 'Your account is pending admin approval. Please check your email after approval.',
+            ]);
+        }
 
         if (! Auth::attempt($credentials, $remember)) {
             throw ValidationException::withMessages([
