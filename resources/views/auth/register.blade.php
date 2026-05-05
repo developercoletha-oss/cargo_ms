@@ -107,6 +107,10 @@
                                     <div class="auth-input-wrap auth-login-input @error('password') is-invalid @enderror">
                                         <input id="password" type="password" name="password"
                                             placeholder="Minimum 8 characters" required autocomplete="new-password">
+                                        <button type="button" class="auth-password-toggle" data-password-toggle="password"
+                                            aria-label="Toggle password visibility">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
                                     </div>
                                     @error('password') <div class="auth-field-error">{{ $message }}</div> @enderror
                                 </div>
@@ -116,6 +120,10 @@
                                     <div class="auth-input-wrap auth-login-input">
                                         <input id="password_confirmation" type="password" name="password_confirmation"
                                             placeholder="Re-type your password" required autocomplete="new-password">
+                                        <button type="button" class="auth-password-toggle" data-password-toggle="password_confirmation"
+                                            aria-label="Toggle password visibility">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

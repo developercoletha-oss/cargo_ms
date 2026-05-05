@@ -80,6 +80,54 @@ class UserManagementController extends Controller
             ->with('success', 'User updated successfully.');
     }
 
+    public function approve(User $user): RedirectResponse
+    {
+        if ($user->role !== 'customer') {
+            return redirect()
+                ->route('dashboard.users.index')
+                ->with('error', 'Only customers can be approved.');
+        }
+
+        if ($user->is_active) {
+            return redirect()
+                ->route('dashboard.users.index')
+                ->with('info', 'Customer is already active.');
+        }
+
+        $user->update(['is_active' => true]);
+
+        try {
+            Mail::to($user->email)->send(new CustomerApprovedMail($user));
+        } catch (\Throwable $exception) {
+            // Keep approval successful even if email service fails.
+        }
+
+        return redirect()
+            ->route('dashboard.users.index')
+            ->with('success', 'Customer approved and activated successfully.');
+    }
+
+    public function deactivate(User $user): RedirectResponse
+    {
+        if ($user->role !== 'customer') {
+            return redirect()
+                ->route('dashboard.users.index')
+                ->with('error', 'Only customers can be deactivated.');
+        }
+
+        if (! $user->is_active) {
+            return redirect()
+                ->route('dashboard.users.index')
+                ->with('info', 'Customer is already inactive.');
+        }
+
+        $user->update(['is_active' => false]);
+
+        return redirect()
+            ->route('dashboard.users.index')
+            ->with('success', 'Customer deactivated successfully.');
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         if ((int) $request->user()->id === (int) $user->id) {

@@ -32,6 +32,8 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     // User Management (admin + hgadmin)
     Route::middleware('role:admin,hgadmin')->group(function () {
+        Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])->name('users.approve');
+        Route::post('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
         Route::resource('users', UserManagementController::class)->names('users');
     });
 });

@@ -8,6 +8,31 @@
 
 @section('content')
 <div class="container-fluid px-3 px-lg-4 py-3">
+    <style>
+        .user-view-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem 1.25rem;
+        }
+
+        .user-view-item {
+            padding: 0.5rem 0.625rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+
+        .user-view-item.full {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 767.98px) {
+            .user-view-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             <form method="GET" action="{{ route('dashboard.users.index') }}" class="row g-2 mb-3">
@@ -100,20 +125,36 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6"><strong>Name:</strong> {{ $user->full_name ?: $user->name }}</div>
-                        <div class="col-md-6"><strong>Email:</strong> {{ $user->email }}</div>
-                        <div class="col-md-4"><strong>Role:</strong> {{ strtoupper($user->role ?? 'user') }}</div>
-                        <div class="col-md-4"><strong>Phone:</strong> {{ $user->phone ?: '-' }}</div>
-                        <div class="col-md-4"><strong>Country:</strong> {{ $user->country ?: '-' }}</div>
-                        <div class="col-md-6"><strong>Timezone:</strong> {{ $user->timezone ?: '-' }}</div>
-                        <div class="col-md-6"><strong>Company:</strong> {{ $user->company_name ?: '-' }}</div>
-                        <div class="col-12"><strong>Address:</strong> {{ $user->address ?: '-' }}</div>
-                        <div class="col-md-6"><strong>Status:</strong> {{ $user->is_active ? 'Active' : 'Inactive' }}</div>
-                        <div class="col-md-6"><strong>Created:</strong> {{ optional($user->created_at)->format('d M Y, H:i') }}</div>
+                    <div class="user-view-grid">
+                        <div class="user-view-item"><strong>Name:</strong> {{ $user->full_name ?: $user->name }}</div>
+                        <div class="user-view-item"><strong>Email:</strong> {{ $user->email }}</div>
+                        <div class="user-view-item"><strong>Role:</strong> {{ strtoupper($user->role ?? 'user') }}</div>
+                        <div class="user-view-item"><strong>Phone:</strong> {{ $user->phone ?: '-' }}</div>
+                        <div class="user-view-item"><strong>Country:</strong> {{ $user->country ?: '-' }}</div>
+                        <div class="user-view-item"><strong>Timezone:</strong> {{ $user->timezone ?: '-' }}</div>
+                        <div class="user-view-item"><strong>Company:</strong> {{ $user->company_name ?: '-' }}</div>
+                        <div class="user-view-item"><strong>Status:</strong> {{ $user->is_active ? 'Active' : 'Inactive' }}</div>
+                        <div class="user-view-item full"><strong>Address:</strong> {{ $user->address ?: '-' }}</div>
+                        <div class="user-view-item"><strong>Created:</strong> {{ optional($user->created_at)->format('d M Y, H:i') }}</div>
                     </div>
                 </div>
                 <div class="modal-footer">
+                    @if(($user->role === 'customer') && ! $user->is_active)
+                        <form method="POST" action="{{ route('dashboard.users.approve', $user) }}" class="me-auto">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="bi bi-check-circle me-1"></i>Approve Customer
+                            </button>
+                        </form>
+                    @endif
+                    @if(($user->role === 'customer') && $user->is_active)
+                        <form method="POST" action="{{ route('dashboard.users.deactivate', $user) }}" class="me-auto">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-slash-circle me-1"></i>Deactivate Customer
+                            </button>
+                        </form>
+                    @endif
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
