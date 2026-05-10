@@ -213,7 +213,7 @@
                         optimize your fleet, and deliver exceptional service — all from one powerful dashboard.
                     </p>
                     <div class="home-hero-actions">
-                        <a href="/login" class="btn btn-primary btn-premium shadow-lg">
+                        <a href="{{ route('register') }}" class="btn btn-primary btn-premium shadow-lg">
                             Get Started
                         </a>
                         <a href="{{ route('about') }}" class="btn btn-outline-dark btn-premium">

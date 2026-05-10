@@ -33,11 +33,8 @@ class RegisterController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'company_name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:500'],
-            'country' => ['required', 'string', 'size:2'],
             'password' => ['required', 'string', 'confirmed', 'min:8'],
         ]);
-
-        $country = strtoupper($credentials['country']);
 
         User::create([
             'full_name' => $credentials['full_name'],
@@ -46,8 +43,8 @@ class RegisterController extends Controller
             'phone' => $credentials['phone'],
             'company_name' => $credentials['company_name'],
             'address' => $credentials['address'],
-            'country' => $country,
-            'timezone' => $this->timezoneForCountry($country),
+            'country' => 'TZ',
+            'timezone' => 'Africa/Dar_es_Salaam',
             'role' => 'customer',
             'is_active' => false,
             'password' => $credentials['password'],
@@ -57,15 +54,4 @@ class RegisterController extends Controller
             ->with('status', 'Registration submitted successfully. Please wait for admin approval. You will receive an email once your account is activated.');
     }
 
-    private function timezoneForCountry(string $country): ?string
-    {
-        return match ($country) {
-            'KE' => 'Africa/Nairobi',
-            'TZ' => 'Africa/Dar_es_Salaam',
-            'UG' => 'Africa/Kampala',
-            'RW' => 'Africa/Kigali',
-            'BU' => 'Africa/Bujumbura',
-            default => null,
-        };
-    }
 }

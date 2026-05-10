@@ -161,8 +161,8 @@ class UserManagementController extends Controller
 
     private function mapPayload(array $validated, bool $creating): array
     {
-        $country = strtoupper((string) ($validated['country'] ?? ''));
-        $timezone = $validated['timezone'] ?? $this->timezoneForCountry($country);
+        $country = 'TZ';
+        $timezone = $validated['timezone'] ?? 'Africa/Dar_es_Salaam';
 
         $payload = [
             'name' => $validated['full_name'],
@@ -172,7 +172,7 @@ class UserManagementController extends Controller
             'role' => $validated['role'],
             'address' => $validated['address'] ?? null,
             'company_name' => $validated['company_name'] ?? null,
-            'country' => $country !== '' ? $country : null,
+            'country' => $country,
             'timezone' => $timezone,
             'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : false,
         ];
@@ -182,17 +182,5 @@ class UserManagementController extends Controller
         }
 
         return $payload;
-    }
-
-    private function timezoneForCountry(string $country): ?string
-    {
-        return match ($country) {
-            'KE' => 'Africa/Nairobi',
-            'TZ' => 'Africa/Dar_es_Salaam',
-            'UG' => 'Africa/Kampala',
-            'RW' => 'Africa/Kigali',
-            'BU' => 'Africa/Bujumbura',
-            default => null,
-        };
     }
 }

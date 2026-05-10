@@ -41,17 +41,12 @@
         @error('company_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 
-    <div class="col-md-4">
-        <label class="form-label" for="country">Country Code</label>
-        <input type="text" id="country" name="country" class="form-control @error('country') is-invalid @enderror"
-            value="{{ old('country', $user->country ?? '') }}" maxlength="2" placeholder="TZ">
-        @error('country') <div class="invalid-feedback">{{ $message }}</div> @enderror
-    </div>
+    <input type="hidden" name="country" value="TZ">
 
     <div class="col-md-4">
         <label class="form-label" for="timezone">Timezone</label>
         <input type="text" id="timezone" name="timezone" class="form-control @error('timezone') is-invalid @enderror"
-            value="{{ old('timezone', $user->timezone ?? '') }}" placeholder="Africa/Dar_es_Salaam">
+            value="{{ old('timezone', $user->timezone ?? 'Africa/Dar_es_Salaam') }}" placeholder="Africa/Dar_es_Salaam">
         @error('timezone') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 

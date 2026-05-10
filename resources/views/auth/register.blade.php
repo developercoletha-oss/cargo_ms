@@ -84,14 +84,7 @@
                                     @error('company_name') <div class="auth-field-error">{{ $message }}</div> @enderror
                                 </div>
 
-                                <div class="auth-input-group">
-                                    <label for="country">Country Code</label>
-                                    <div class="auth-input-wrap auth-login-input @error('country') is-invalid @enderror">
-                                        <input id="country" type="text" name="country" value="{{ old('country') }}"
-                                            placeholder="TZ" maxlength="2" required>
-                                    </div>
-                                    @error('country') <div class="auth-field-error">{{ $message }}</div> @enderror
-                                </div>
+                                <input type="hidden" name="country" value="TZ">
 
                                 <div class="auth-input-group">
                                     <label for="address">Business Address</label>

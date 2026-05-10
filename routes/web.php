@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\CargoController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\ShipmentController;
@@ -28,6 +29,17 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     // Shipments (role-based access)
     Route::middleware('role:admin,hgadmin,manager,staff')->group(function () {
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+    });
+
+    // Cargo workflow
+    Route::middleware('role:customer,admin,hgadmin,manager,staff')->group(function () {
+        Route::get('/cargo', [CargoController::class, 'index'])->name('cargo.index');
+        Route::post('/cargo', [CargoController::class, 'store'])->name('cargo.store');
+        Route::put('/cargo/{cargo}', [CargoController::class, 'update'])->name('cargo.update');
+        Route::delete('/cargo/{cargo}', [CargoController::class, 'destroy'])->name('cargo.destroy');
+        Route::post('/cargo/{cargo}/approve', [CargoController::class, 'approve'])->name('cargo.approve');
+        Route::post('/cargo/{cargo}/disapprove', [CargoController::class, 'disapprove'])->name('cargo.disapprove');
+        Route::post('/cargo/{cargo}/assign', [CargoController::class, 'assign'])->name('cargo.assign');
     });
 
     // User Management (admin + hgadmin)

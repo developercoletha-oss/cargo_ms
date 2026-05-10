@@ -40,6 +40,10 @@
                 'title' => 'User Management',
                 'subtitle' => 'Create, review, update, and remove system users.',
             ],
+            request()->is('dashboard/cargo*') => [
+                'title' => 'Cargo Management',
+                'subtitle' => 'Create cargo requests, review approvals, and assign transport officers.',
+            ],
             default => [
                 'title' => 'User Panel',
                 'subtitle' => 'Manage your activities from this workspace.',

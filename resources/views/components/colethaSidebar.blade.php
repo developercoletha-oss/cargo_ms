@@ -35,6 +35,15 @@
             </li>
             @endif
 
+            @if(in_array($userRole, ['customer', 'admin', 'hgadmin', 'manager', 'staff']))
+            <li class="nav-item">
+                <a href="{{ route('dashboard.cargo.index') }}"
+                    class="nav-link {{ request()->routeIs('dashboard.cargo.*') ? 'active' : '' }}">
+                    <i class="bi bi-box2-heart"></i> Cargo
+                </a>
+            </li>
+            @endif
+
             <li class="nav-item">
                 <a href="{{ route('dashboard.notifications.index') }}"
                     class="nav-link {{ request()->is('dashboard/notifications*') ? 'active' : '' }}">
