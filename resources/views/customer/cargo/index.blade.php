@@ -99,7 +99,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    @include('dashboard.cargo.partials.form')
+                    @include('customer.cargo.partials.form')
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -178,7 +178,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            @include('dashboard.cargo.partials.form', ['cargo' => $cargo])
+                            @include('customer.cargo.partials.form', ['cargo' => $cargo])
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -222,3 +222,7 @@
     @endif
 @endforeach
 @endsection
+
+
+
+

@@ -33,6 +33,6 @@ class ShipmentController extends Controller
 
         $shipments = $query->latest()->paginate(15);
 
-        return view('dashboard.shipments.index', compact('shipments', 'user'));
+        return view('staff.shipments.index', compact('shipments', 'user'));
     }
 }

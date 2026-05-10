@@ -28,15 +28,10 @@ class UserManagementController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        return view('dashboard.users.index', [
+        return view('admin.users.index', [
             'users' => $users,
             'search' => $search,
         ]);
-    }
-
-    public function create(): View
-    {
-        return view('dashboard.users.create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -48,16 +43,6 @@ class UserManagementController extends Controller
         return redirect()
             ->route('dashboard.users.index')
             ->with('success', 'User created successfully.');
-    }
-
-    public function show(User $user): View
-    {
-        return view('dashboard.users.show', ['user' => $user]);
-    }
-
-    public function edit(User $user): View
-    {
-        return view('dashboard.users.edit', ['user' => $user]);
     }
 
     public function update(Request $request, User $user): RedirectResponse

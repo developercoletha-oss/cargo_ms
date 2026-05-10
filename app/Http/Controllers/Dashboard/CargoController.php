@@ -55,7 +55,7 @@ class CargoController extends Controller
             ->orderBy('staff_code')
             ->get();
 
-        return view('dashboard.cargo.index', [
+        return view('customer.cargo.index', [
             'cargoes' => $cargoes,
             'search' => $search,
             'transportStaff' => $transportStaff,

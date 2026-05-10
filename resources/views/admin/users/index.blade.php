@@ -105,7 +105,69 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    @include('dashboard.users._form')
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="add_full_name">Full Name</label>
+                            <input type="text" id="add_full_name" name="full_name" class="form-control @error('full_name') is-invalid @enderror"
+                                value="{{ old('full_name', '') }}" required>
+                            @error('full_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="add_email">Email</label>
+                            <input type="email" id="add_email" name="email" class="form-control @error('email') is-invalid @enderror"
+                                value="{{ old('email', '') }}" required>
+                            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="add_phone">Phone</label>
+                            <input type="text" id="add_phone" name="phone" class="form-control @error('phone') is-invalid @enderror"
+                                value="{{ old('phone', '') }}">
+                            @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="add_role">Role</label>
+                            <select id="add_role" name="role" class="form-select @error('role') is-invalid @enderror" required>
+                                @foreach(['admin', 'hgadmin', 'manager', 'staff', 'user', 'customer'] as $role)
+                                    <option value="{{ $role }}" @selected(old('role', 'user') === $role)>{{ strtoupper($role) }}</option>
+                                @endforeach
+                            </select>
+                            @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="add_company_name">Company</label>
+                            <input type="text" id="add_company_name" name="company_name" class="form-control @error('company_name') is-invalid @enderror"
+                                value="{{ old('company_name', '') }}">
+                            @error('company_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <input type="hidden" name="country" value="TZ">
+                        <div class="col-md-4">
+                            <label class="form-label" for="add_timezone">Timezone</label>
+                            <input type="text" id="add_timezone" name="timezone" class="form-control @error('timezone') is-invalid @enderror"
+                                value="{{ old('timezone', 'Africa/Dar_es_Salaam') }}" placeholder="Africa/Dar_es_Salaam">
+                            @error('timezone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="add_is_active" name="is_active"
+                                    @checked(old('is_active', true))>
+                                <label class="form-check-label" for="add_is_active">Active user</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="add_password">Password</label>
+                            <input type="password" id="add_password" name="password" class="form-control @error('password') is-invalid @enderror" required>
+                            @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="add_password_confirmation">Confirm Password</label>
+                            <input type="password" id="add_password_confirmation" name="password_confirmation" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="add_address">Address</label>
+                            <textarea id="add_address" name="address" class="form-control @error('address') is-invalid @enderror" rows="3">{{ old('address', '') }}</textarea>
+                            @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -172,7 +234,61 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        @include('dashboard.users._form', ['user' => $user])
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="full_name_{{ $user->id }}">Full Name</label>
+                                <input type="text" id="full_name_{{ $user->id }}" name="full_name" class="form-control"
+                                    value="{{ $user->full_name ?? '' }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="email_{{ $user->id }}">Email</label>
+                                <input type="email" id="email_{{ $user->id }}" name="email" class="form-control"
+                                    value="{{ $user->email ?? '' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="phone_{{ $user->id }}">Phone</label>
+                                <input type="text" id="phone_{{ $user->id }}" name="phone" class="form-control"
+                                    value="{{ $user->phone ?? '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="role_{{ $user->id }}">Role</label>
+                                <select id="role_{{ $user->id }}" name="role" class="form-select" required>
+                                    @foreach(['admin', 'hgadmin', 'manager', 'staff', 'user', 'customer'] as $role)
+                                        <option value="{{ $role }}" @selected(($user->role ?? 'user') === $role)>{{ strtoupper($role) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="company_name_{{ $user->id }}">Company</label>
+                                <input type="text" id="company_name_{{ $user->id }}" name="company_name" class="form-control"
+                                    value="{{ $user->company_name ?? '' }}">
+                            </div>
+                            <input type="hidden" name="country" value="TZ">
+                            <div class="col-md-4">
+                                <label class="form-label" for="timezone_{{ $user->id }}">Timezone</label>
+                                <input type="text" id="timezone_{{ $user->id }}" name="timezone" class="form-control"
+                                    value="{{ $user->timezone ?? 'Africa/Dar_es_Salaam' }}" placeholder="Africa/Dar_es_Salaam">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="is_active_{{ $user->id }}" name="is_active"
+                                        @checked($user->is_active ?? true)>
+                                    <label class="form-check-label" for="is_active_{{ $user->id }}">Active user</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="password_{{ $user->id }}">Password (optional)</label>
+                                <input type="password" id="password_{{ $user->id }}" name="password" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="password_confirmation_{{ $user->id }}">Confirm Password</label>
+                                <input type="password" id="password_confirmation_{{ $user->id }}" name="password_confirmation" class="form-control">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="address_{{ $user->id }}">Address</label>
+                                <textarea id="address_{{ $user->id }}" name="address" class="form-control" rows="3">{{ $user->address ?? '' }}</textarea>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -184,3 +300,7 @@
     </div>
 @endforeach
 @endsection
+
+
+
+
