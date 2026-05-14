@@ -15,7 +15,9 @@
             </div>
             <div class="coletha-sidebar-brand-text">
                 <div class="coletha-sidebar-brand-title">CFTMS</div>
-                <div class="coletha-sidebar-brand-subtitle">Cargo and Freight Tracking</div>
+                <div class="mt-1">
+                    <span class="badge text-bg-light border">{{ strtoupper($userRole) }}</span>
+                </div>
             </div>
         </div>
         <ul class="nav flex-column">

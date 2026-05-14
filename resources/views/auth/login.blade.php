@@ -50,8 +50,8 @@
                             <div class="auth-input-group">
                                 <label for="email">Email address</label>
                                 <div class="auth-input-wrap auth-login-input @error('email') is-invalid @enderror">
-                                    <input id="email" type="email" name="email" value=""
-                                        placeholder="user@example.test" required autocomplete="off" autofocus>
+                                    <input id="email" type="email" name="email" value="{{ old('email') }}"
+                                        placeholder="user@example.test" required autocomplete="email" autofocus>
                                 </div>
                                 @error('email')
                                     <div class="auth-field-error">{{ $message }}</div>
