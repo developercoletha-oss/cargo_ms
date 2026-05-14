@@ -72,8 +72,8 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewUserModal-{{ $user->id }}"><i class="bi bi-eye me-1"></i>View</button>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editUserModal-{{ $user->id }}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewUserModal-{{ $user->id }}"><i class="bi bi-eye me-1"></i>View</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editUserModal-{{ $user->id }}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
                                     <form method="POST" action="{{ route('dashboard.users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Delete this user?');">
                                         @csrf
                                         @method('DELETE')

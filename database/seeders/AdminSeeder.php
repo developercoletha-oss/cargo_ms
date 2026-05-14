@@ -32,8 +32,8 @@ class AdminSeeder extends Seeder
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
                 'role' => 'admin',
-                'country' => 'KE',
-                'timezone' => 'Africa/Nairobi',
+                'country' => 'TZ',
+                'timezone' => 'Africa/Dar_es_Salaam',
                 'is_active' => true,
             ]
         );

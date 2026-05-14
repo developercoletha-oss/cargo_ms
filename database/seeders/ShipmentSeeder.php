@@ -20,7 +20,7 @@ class ShipmentSeeder extends Seeder
             return;
         }
 
-        $countries = ['KE', 'TZ', 'UG', 'RW', 'BU'];
+        $countries = ['TZ'];
         $statuses = ['pending', 'in_transit', 'delivered', 'cancelled'];
         $priorities = ['low', 'normal', 'high', 'urgent'];
         
@@ -30,9 +30,6 @@ class ShipmentSeeder extends Seeder
         for ($i = 0; $i < 50; $i++) {
             $originCountry = $countries[array_rand($countries)];
             $destCountry = $countries[array_rand($countries)];
-            while ($destCountry === $originCountry) {
-                $destCountry = $countries[array_rand($countries)];
-            }
             
             $status = $statuses[array_rand($statuses)];
             $priority = $priorities[array_rand($priorities)];
@@ -67,11 +64,7 @@ class ShipmentSeeder extends Seeder
     private function getCityForCountry(string $countryCode): string
     {
         $cities = [
-            'KE' => ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret'],
             'TZ' => ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Zanzibar'],
-            'UG' => ['Kampala', 'Entebbe', 'Gulu', 'Jinja', 'Mbarara'],
-            'RW' => ['Kigali', 'Butare', 'Gitarama', 'Ruhengeri'],
-            'BU' => ['Bujumbura', 'Gitega', 'Ngozi', 'Ruyigi'],
         ];
         
         return $cities[$countryCode][array_rand($cities[$countryCode] ?? ['Unknown'])];

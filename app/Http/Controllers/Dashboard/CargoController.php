@@ -13,6 +13,37 @@ use Illuminate\View\View;
 
 class CargoController extends Controller
 {
+    private const TANZANIA_AREAS = [
+        'Arusha',
+        'Dar es Salaam',
+        'Dodoma',
+        'Geita',
+        'Iringa',
+        'Kagera',
+        'Katavi',
+        'Kigoma',
+        'Kilimanjaro',
+        'Lindi',
+        'Manyara',
+        'Mara',
+        'Mbeya',
+        'Morogoro',
+        'Mtwara',
+        'Mwanza',
+        'Njombe',
+        'Pemba',
+        'Pwani',
+        'Rukwa',
+        'Ruvuma',
+        'Shinyanga',
+        'Simiyu',
+        'Singida',
+        'Songwe',
+        'Tabora',
+        'Tanga',
+        'Zanzibar',
+    ];
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -198,9 +229,9 @@ class CargoController extends Controller
     private function validateCargo(Request $request): array
     {
         return $request->validate([
-            'origin_city' => ['required', 'string', 'max:120'],
+            'origin_city' => ['required', 'string', 'max:120', Rule::in(self::TANZANIA_AREAS)],
             'origin_address' => ['nullable', 'string', 'max:255'],
-            'destination_city' => ['required', 'string', 'max:120'],
+            'destination_city' => ['required', 'string', 'max:120', Rule::in(self::TANZANIA_AREAS)],
             'destination_address' => ['nullable', 'string', 'max:255'],
             'pickup_date' => ['nullable', 'date'],
             'delivery_date' => ['nullable', 'date', 'after_or_equal:pickup_date'],
@@ -214,6 +245,9 @@ class CargoController extends Controller
             'is_fragile' => ['nullable', 'boolean'],
             'is_hazardous' => ['nullable', 'boolean'],
             'special_instructions' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'origin_city.in' => 'Origin area must be a valid Tanzania area.',
+            'destination_city.in' => 'Destination area must be a valid Tanzania area.',
         ]);
     }
 

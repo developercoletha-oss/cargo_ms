@@ -13,10 +13,10 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $countries = ['KE', 'TZ', 'UG', 'RW'];
+        $countries = ['TZ'];
         $roles = ['admin', 'hgadmin', 'manager', 'staff'];
         
-        // Add Admin User (KE - Kenya)
+        // Add Admin User (TZ - Tanzania)
         User::updateOrCreate(
             ['email' => 'admin@coletha.test'],
             [
@@ -25,8 +25,8 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'role' => 'admin',
-                'country' => 'KE',
-                'timezone' => 'Africa/Nairobi',
+                'country' => 'TZ',
+                'timezone' => 'Africa/Dar_es_Salaam',
                 'is_active' => true,
             ]
         );
@@ -46,13 +46,13 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // Add a few staff users for demo with different countries
+        // Add a few staff users for demo
         $staffData = [
-            ['email' => 'staff1@cargo.co.tz', 'name' => 'Kenya Staff', 'country' => 'KE'],
+            ['email' => 'staff1@cargo.co.tz', 'name' => 'Tanzania Staff 1', 'country' => 'TZ'],
             ['email' => 'staff2@cargo.co.tz', 'name' => 'Tanzania Staff', 'country' => 'TZ'],
-            ['email' => 'staff3@cargo.co.tz', 'name' => 'Uganda Staff', 'country' => 'UG'],
-            ['email' => 'staff4@cargo.co.tz', 'name' => 'Rwanda Staff', 'country' => 'RW'],
-            ['email' => 'staff5@cargo.co.tz', 'name' => 'Burundi Staff', 'country' => 'BU'],
+            ['email' => 'staff3@cargo.co.tz', 'name' => 'Tanzania Staff 3', 'country' => 'TZ'],
+            ['email' => 'staff4@cargo.co.tz', 'name' => 'Tanzania Staff 4', 'country' => 'TZ'],
+            ['email' => 'staff5@cargo.co.tz', 'name' => 'Tanzania Staff 5', 'country' => 'TZ'],
         ];
 
         foreach ($staffData as $index => $data) {
@@ -75,11 +75,7 @@ class UserSeeder extends Seeder
     private function getTimezoneForCountry(string $countryCode): string
     {
         $timezones = [
-            'KE' => 'Africa/Nairobi',
             'TZ' => 'Africa/Dar_es_Salaam',
-            'UG' => 'Africa/Kampala',
-            'RW' => 'Africa/Kigali',
-            'BU' => 'Africa/Bujumbura',
         ];
         
         return $timezones[$countryCode] ?? 'UTC';

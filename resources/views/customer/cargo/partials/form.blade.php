@@ -1,18 +1,29 @@
 @php
     $detail = $cargo->detail ?? null;
+    $tanzaniaAreas = [
+        'Arusha', 'Dar es Salaam', 'Dodoma', 'Geita', 'Iringa', 'Kagera', 'Katavi', 'Kigoma',
+        'Kilimanjaro', 'Lindi', 'Manyara', 'Mara', 'Mbeya', 'Morogoro', 'Mtwara', 'Mwanza',
+        'Njombe', 'Pemba', 'Pwani', 'Rukwa', 'Ruvuma', 'Shinyanga', 'Simiyu', 'Singida',
+        'Songwe', 'Tabora', 'Tanga', 'Zanzibar',
+    ];
 @endphp
 
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label">Origin City</label>
-        <input type="text" name="origin_city" class="form-control" required
+        <input type="text" name="origin_city" class="form-control" required list="tz-areas"
             value="{{ old('origin_city', $cargo->origin_city ?? '') }}">
     </div>
     <div class="col-md-6">
         <label class="form-label">Destination City</label>
-        <input type="text" name="destination_city" class="form-control" required
+        <input type="text" name="destination_city" class="form-control" required list="tz-areas"
             value="{{ old('destination_city', $cargo->destination_city ?? '') }}">
     </div>
+    <datalist id="tz-areas">
+        @foreach($tanzaniaAreas as $area)
+            <option value="{{ $area }}"></option>
+        @endforeach
+    </datalist>
     <input type="hidden" name="origin_country" value="TZ">
     <input type="hidden" name="destination_country" value="TZ">
     <div class="col-md-6">

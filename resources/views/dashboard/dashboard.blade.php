@@ -30,7 +30,7 @@
                     </div>
                     @if(isset($user) && $user->country && in_array($user->role, ['admin','hgadmin','manager','staff']))
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-eye"></i> View All Shipments
                         </a>
                     </div>
@@ -66,7 +66,7 @@
                         <h3 class="dashboard-panel__title">Latest Shipments</h3>
                     </div>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-outline-secondary btn-sm">
                             View All
                         </a>
                     </div>
@@ -93,16 +93,7 @@
                                     {{ $shipment->origin_country }} → {{ $shipment->destination_country }}
                                 </td>
                                 <td>
-                                    @php
-                                        $statusClass = match($shipment->status) {
-                                            'delivered' => 'success',
-                                            'in_transit' => 'primary',
-                                            'pending' => 'warning',
-                                            'cancelled' => 'danger',
-                                            default => 'secondary'
-                                        };
-                                    @endphp
-                                    <span class="badge bg-{{ $statusClass }}">{{ ucfirst(str_replace('_', ' ', $shipment->status)) }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border">{{ ucfirst(str_replace('_', ' ', $shipment->status)) }}</span>
                                 </td>
                                 <td>{{ $shipment->assignedUser?->name ?? 'Unassigned' }}</td>
                                 <td>{{ $shipment->created_at->diffForHumans() }}</td>

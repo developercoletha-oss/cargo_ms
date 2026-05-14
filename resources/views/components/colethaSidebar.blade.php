@@ -88,7 +88,7 @@
             @endif
 
             <div class="coletha-sidebar-footer">
-                <div class="coletha-sidebar-footer__copy">&copy; 2026 CFTMS Kit</div>
+                <div class="coletha-sidebar-footer__copy">&copy; 2026 CFTMS</div>
             </div>
         </ul>
     </div>

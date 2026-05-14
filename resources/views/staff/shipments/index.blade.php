@@ -35,61 +35,75 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        @foreach($shipments as $shipment)
-                        <tr>
-                            <td>
-                                <strong>{{ $shipment->tracking_number }}</strong>
-                            </td>
-                            <td>
-                                {{ $shipment->origin_city ?? $shipment->origin_country }}
-                                <br><small class="text-muted">{{ $shipment->origin_country }}</small>
-                            </td>
-                            <td>
-                                {{ $shipment->destination_city ?? $shipment->destination_country }}
-                                <br><small class="text-muted">{{ $shipment->destination_country }}</small>
-                            </td>
-                            <td>
-                                @php
-                                    $statusClass = match($shipment->status) {
-                                        'delivered' => 'success',
-                                        'in_transit' => 'primary',
-                                        'pending' => 'warning',
-                                        'cancelled' => 'danger',
-                                        default => 'secondary'
-                                    };
-                                @endphp
-                                <span class="badge bg-{{ $statusClass }}">
-                                    {{ ucfirst(str_replace('_', ' ', $shipment->status)) }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ $shipment->priority === 'high' ? 'danger' : ($shipment->priority === 'urgent' ? 'dark' : 'secondary') }}">
-                                    {{ ucfirst($shipment->priority) }}
-                                </span>
-                            </td>
-                            <td>
-                                {{ $shipment->assignedUser?->name ?? 'Unassigned' }}
-                            </td>
-                            <td>
-                                {{ $shipment->created_at->diffForHumans() }}
-                            </td>
-                            <td>
-                                <a href="#" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
-                            </td>
-                        </tr>
-                        @endforeach
+                    <tbody id="shipmentsTableBody">
+                        @include('staff.shipments.partials.rows', ['shipments' => $shipments])
                     </tbody>
                 </table>
             </div>
 
-            <div class="mt-4">
-                {{ $shipments->links() }}
+            <div id="shipmentsLoadingState" class="text-center py-3 {{ $shipments->hasMorePages() ? '' : 'd-none' }}">
+                <small class="text-muted">Loading more shipments...</small>
             </div>
             @endif
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tbody = document.getElementById('shipmentsTableBody');
+    const loadingState = document.getElementById('shipmentsLoadingState');
+    if (!tbody || !loadingState) return;
+
+    let nextPage = {{ $shipments->currentPage() + 1 }};
+    let hasMore = {{ $shipments->hasMorePages() ? 'true' : 'false' }};
+    let loading = false;
+
+    const loadMore = async () => {
+        if (!hasMore || loading) return;
+        loading = true;
+
+        try {
+            const url = new URL("{{ route('dashboard.shipments.index') }}", window.location.origin);
+            url.searchParams.set('page', String(nextPage));
+
+            const response = await fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to load shipments');
+            const data = await response.json();
+
+            if (data.rows) {
+                tbody.insertAdjacentHTML('beforeend', data.rows);
+            }
+
+            hasMore = Boolean(data.has_more);
+            nextPage = Number(data.next_page || (nextPage + 1));
+            if (!hasMore) loadingState.classList.add('d-none');
+        } catch (error) {
+            loadingState.innerHTML = '<small class="text-muted">Unable to load more shipments.</small>';
+        } finally {
+            loading = false;
+        }
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) loadMore();
+        });
+    }, { rootMargin: '180px' });
+
+    if (hasMore) {
+        observer.observe(loadingState);
+    } else {
+        loadingState.classList.add('d-none');
+    }
+});
+</script>
+@endpush

@@ -31,7 +31,15 @@ class ShipmentController extends Controller
             }
         }
 
-        $shipments = $query->latest()->paginate(15);
+        $shipments = $query->with('assignedUser')->latest()->paginate(15)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('staff.shipments.partials.rows', compact('shipments'))->render(),
+                'has_more' => $shipments->hasMorePages(),
+                'next_page' => $shipments->currentPage() + 1,
+            ]);
+        }
 
         return view('staff.shipments.index', compact('shipments', 'user'));
     }
