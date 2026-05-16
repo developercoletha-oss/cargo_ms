@@ -232,6 +232,8 @@ class CargoController extends Controller
 
         $validated = $request->validate([
             'transport_staff_id' => ['required', Rule::exists('transport_staff', 'id')],
+            'pickup_date' => ['required', 'date'],
+            'delivery_date' => ['nullable', 'date', 'after_or_equal:pickup_date'],
         ]);
 
         $transportStaff = TransportStaff::with('user')->findOrFail((int) $validated['transport_staff_id']);
@@ -241,9 +243,68 @@ class CargoController extends Controller
 
         $cargo->update([
             'transport_staff_id' => (int) $validated['transport_staff_id'],
+            'pickup_date' => $validated['pickup_date'],
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'signed_by_transporter' => null,
+            'signed_at' => null,
+            'handover_confirmed_by' => null,
+            'handover_confirmed_at' => null,
         ]);
 
         return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo assigned to transporter successfully.');
+    }
+
+    public function sign(Request $request, Cargo $cargo): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'transporter') {
+            abort(403, 'Only transporter can sign assigned cargo.');
+        }
+
+        $transportStaff = TransportStaff::query()->where('user_id', $user->id)->first();
+        if (! $transportStaff || (int) $cargo->transport_staff_id !== (int) $transportStaff->id) {
+            return back()->with('error', 'You can only sign cargo assigned to you.');
+        }
+
+        if ($cargo->status !== 'approved') {
+            return back()->with('error', 'Only approved cargo can be signed.');
+        }
+
+        if ($cargo->signed_at) {
+            return back()->with('info', 'Cargo is already signed by transporter.');
+        }
+
+        $cargo->update([
+            'signed_by_transporter' => $user->id,
+            'signed_at' => now(),
+            'handover_confirmed_by' => null,
+            'handover_confirmed_at' => null,
+        ]);
+
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo signed successfully.');
+    }
+
+    public function confirmHandover(Request $request, Cargo $cargo): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'store_keeper') {
+            abort(403, 'Only store keeper can confirm warehouse handover.');
+        }
+
+        if (! $cargo->transport_staff_id || ! $cargo->signed_at) {
+            return back()->with('error', 'Transporter must sign cargo before handover confirmation.');
+        }
+
+        if ($cargo->handover_confirmed_at) {
+            return back()->with('info', 'Handover is already confirmed by store keeper.');
+        }
+
+        $cargo->update([
+            'handover_confirmed_by' => $user->id,
+            'handover_confirmed_at' => now(),
+        ]);
+
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Warehouse handover confirmed successfully.');
     }
 
     private function validateCargo(Request $request): array

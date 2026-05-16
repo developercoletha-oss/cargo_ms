@@ -28,6 +28,10 @@ class Cargo extends Model
         'approved_at',
         'disapproved_by',
         'disapproved_at',
+        'signed_by_transporter',
+        'signed_at',
+        'handover_confirmed_by',
+        'handover_confirmed_at',
     ];
 
     protected function casts(): array
@@ -37,6 +41,8 @@ class Cargo extends Model
             'delivery_date' => 'date',
             'approved_at' => 'datetime',
             'disapproved_at' => 'datetime',
+            'signed_at' => 'datetime',
+            'handover_confirmed_at' => 'datetime',
         ];
     }
 //relationship
@@ -58,5 +64,15 @@ class Cargo extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function signedTransporter()
+    {
+        return $this->belongsTo(User::class, 'signed_by_transporter');
+    }
+
+    public function handoverConfirmer()
+    {
+        return $this->belongsTo(User::class, 'handover_confirmed_by');
     }
 }

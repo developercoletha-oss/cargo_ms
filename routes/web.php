@@ -42,10 +42,15 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     Route::middleware('role:store_keeper')->group(function () {
         Route::post('/cargo', [CargoController::class, 'store'])->name('cargo.store');
+        Route::post('/cargo/{cargo}/confirm-handover', [CargoController::class, 'confirmHandover'])->name('cargo.confirm-handover');
     });
 
     Route::middleware('role:manager')->group(function () {
         Route::post('/cargo/{cargo}/assign', [CargoController::class, 'assign'])->name('cargo.assign');
+    });
+
+    Route::middleware('role:transporter')->group(function () {
+        Route::post('/cargo/{cargo}/sign', [CargoController::class, 'sign'])->name('cargo.sign');
     });
 
     // User Management (admin)

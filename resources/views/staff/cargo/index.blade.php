@@ -4,6 +4,7 @@
     $canReview = in_array($user->role, ['admin', 'manager'], true);
     $canAssign = $user->role === 'manager';
     $canRegisterCargo = $user->role === 'store_keeper';
+    $isTransporter = $user->role === 'transporter';
 @endphp
 
 @section('page_header_actions')
@@ -99,7 +100,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        @include('customer.cargo.partials.form')
+                        @include('customer.cargo.partials.form', ['hideScheduleFields' => true])
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -132,6 +133,22 @@
                         <div class="col-12"><strong>Description:</strong> {{ $cargo->detail?->description }}</div>
                         <div class="col-12"><strong>Special Instructions:</strong> {{ $cargo->detail?->special_instructions ?: '-' }}</div>
                         <div class="col-12"><strong>Status:</strong> {{ strtoupper($cargo->status) }}</div>
+                        <div class="col-12">
+                            <strong>Transporter Sign:</strong>
+                            @if($cargo->signed_at)
+                                Signed on {{ optional($cargo->signed_at)->format('d M Y H:i') }}
+                            @else
+                                Not signed
+                            @endif
+                        </div>
+                        <div class="col-12">
+                            <strong>Store Keeper Handover Confirm:</strong>
+                            @if($cargo->handover_confirmed_at)
+                                Confirmed on {{ optional($cargo->handover_confirmed_at)->format('d M Y H:i') }}
+                            @else
+                                Not confirmed
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
@@ -151,9 +168,21 @@
                             @endif
                             @if($canAssign && $cargo->status === 'approved')
                                 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignCargoModal-{{ $cargo->id }}">
-                                    <i class="bi bi-person-check me-1"></i>Assign Officer
+                                    <i class="bi bi-person-check me-1"></i>Assign / Update Schedule
                                 </button>
                             @endif
+                        @endif
+                        @if($isTransporter && $cargo->status === 'approved' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id && ! $cargo->signed_at)
+                            <form method="POST" action="{{ route('dashboard.cargo.sign', $cargo) }}">
+                                @csrf
+                                <button class="btn btn-primary" type="submit"><i class="bi bi-pen me-1"></i>Sign Cargo</button>
+                            </form>
+                        @endif
+                        @if($canRegisterCargo && $cargo->status === 'approved' && $cargo->signed_at && ! $cargo->handover_confirmed_at)
+                            <form method="POST" action="{{ route('dashboard.cargo.confirm-handover', $cargo) }}">
+                                @csrf
+                                <button class="btn btn-outline-success" type="submit"><i class="bi bi-check2-square me-1"></i>Confirm Handover</button>
+                            </form>
                         @endif
                     </div>
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
@@ -169,7 +198,7 @@
                     <form method="POST" action="{{ route('dashboard.cargo.assign', $cargo) }}">
                         @csrf
                         <div class="modal-header">
-                            <h5 class="modal-title">Assign Transport Officer</h5>
+                            <h5 class="modal-title">Assign Transport Officer & Schedule</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
@@ -182,10 +211,20 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="mt-3">
+                                <label class="form-label" for="pickup_date_{{ $cargo->id }}">Pickup Date</label>
+                                <input id="pickup_date_{{ $cargo->id }}" type="date" name="pickup_date" class="form-control"
+                                    value="{{ old('pickup_date', optional($cargo->pickup_date)->format('Y-m-d')) }}" required>
+                            </div>
+                            <div class="mt-3">
+                                <label class="form-label" for="delivery_date_{{ $cargo->id }}">Delivery Date</label>
+                                <input id="delivery_date_{{ $cargo->id }}" type="date" name="delivery_date" class="form-control"
+                                    value="{{ old('delivery_date', optional($cargo->delivery_date)->format('Y-m-d')) }}">
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Assign</button>
+                            <button type="submit" class="btn btn-primary">Save Assignment</button>
                         </div>
                     </form>
                 </div>

@@ -1,5 +1,6 @@
 @php
     $detail = $cargo->detail ?? null;
+    $hideScheduleFields = $hideScheduleFields ?? false;
     $tanzaniaAreas = [
         'Arusha', 'Dar es Salaam', 'Dodoma', 'Geita', 'Iringa', 'Kagera', 'Katavi', 'Kigoma',
         'Kilimanjaro', 'Lindi', 'Manyara', 'Mara', 'Mbeya', 'Morogoro', 'Mtwara', 'Mwanza',
@@ -36,16 +37,18 @@
         <input type="text" name="destination_address" class="form-control"
             value="{{ old('destination_address', $cargo->destination_address ?? '') }}">
     </div>
-    <div class="col-md-6">
-        <label class="form-label">Pickup Date</label>
-        <input type="date" name="pickup_date" class="form-control"
-            value="{{ old('pickup_date', optional($cargo->pickup_date ?? null)->format('Y-m-d')) }}">
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">Delivery Date</label>
-        <input type="date" name="delivery_date" class="form-control"
-            value="{{ old('delivery_date', optional($cargo->delivery_date ?? null)->format('Y-m-d')) }}">
-    </div>
+    @unless($hideScheduleFields)
+        <div class="col-md-6">
+            <label class="form-label">Pickup Date</label>
+            <input type="date" name="pickup_date" class="form-control"
+                value="{{ old('pickup_date', optional($cargo->pickup_date ?? null)->format('Y-m-d')) }}">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Delivery Date</label>
+            <input type="date" name="delivery_date" class="form-control"
+                value="{{ old('delivery_date', optional($cargo->delivery_date ?? null)->format('Y-m-d')) }}">
+        </div>
+    @endunless
     <div class="col-md-6">
         <label class="form-label">Cargo Type</label>
         <input type="text" name="cargo_type" class="form-control"
