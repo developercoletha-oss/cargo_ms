@@ -1,8 +1,18 @@
 @extends('layouts.colethaDashboardLayout')
 
 @php
-    $canReview = in_array($user->role, ['admin', 'hgadmin', 'manager', 'staff'], true);
+    $canReview = in_array($user->role, ['admin', 'manager'], true);
+    $canAssign = $user->role === 'manager';
+    $canRegisterCargo = $user->role === 'store_keeper';
 @endphp
+
+@section('page_header_actions')
+    @if($canRegisterCargo)
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#registerCargoModal">
+            <i class="bi bi-plus-circle me-1"></i> Register Cargo
+        </button>
+    @endif
+@endsection
 
 @section('content')
 <div class="container-fluid px-3 px-lg-4 py-3">
@@ -67,6 +77,40 @@
     </div>
 </div>
 
+@if($canRegisterCargo)
+    <div class="modal fade" id="registerCargoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('dashboard.cargo.store') }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Register Cargo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Customer</label>
+                            <select name="customer_id" class="form-select" required>
+                                <option value="">Select customer...</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}">
+                                        {{ $customer->full_name ?: $customer->name }} ({{ $customer->email }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @include('customer.cargo.partials.form')
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Cargo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endif
+
 @foreach($cargoes as $cargo)
     <div class="modal fade" id="viewCargoModal-{{ $cargo->id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -92,7 +136,7 @@
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex gap-2">
-                        @if($canReview)
+                            @if($canReview)
                             @if($cargo->status !== 'approved')
                                 <form method="POST" action="{{ route('dashboard.cargo.approve', $cargo) }}">
                                     @csrf
@@ -105,7 +149,7 @@
                                     <button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Disapprove</button>
                                 </form>
                             @endif
-                            @if($cargo->status === 'approved')
+                            @if($canAssign && $cargo->status === 'approved')
                                 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignCargoModal-{{ $cargo->id }}">
                                     <i class="bi bi-person-check me-1"></i>Assign Officer
                                 </button>
@@ -118,7 +162,7 @@
         </div>
     </div>
 
-    @if($canReview && $cargo->status === 'approved')
+    @if($canAssign && $cargo->status === 'approved')
         <div class="modal fade" id="assignCargoModal-{{ $cargo->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-md modal-dialog-centered">
                 <div class="modal-content">
@@ -150,4 +194,3 @@
     @endif
 @endforeach
 @endsection
-

@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $stats = [];
 
         // Admin sees global stats
-        if ($userRole === 'admin' || $userRole === 'hgadmin') {
+        if ($userRole === 'admin') {
             $stats = [
                 [
                     'label' => 'Total Users',

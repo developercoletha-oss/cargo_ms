@@ -129,7 +129,8 @@
                             <select id="add_role" name="role" class="form-select @error('role') is-invalid @enderror" required>
                                 <option value="admin" @selected(old('role', 'customer') === 'admin')>ADMIN</option>
                                 <option value="manager" @selected(old('role', 'customer') === 'manager')>MANAGER</option>
-                                <option value="staff" @selected(old('role', 'customer') === 'staff')>TRANSPORTER</option>
+                                <option value="transporter" @selected(old('role', 'customer') === 'transporter')>TRANSPORTER</option>
+                                <option value="store_keeper" @selected(old('role', 'customer') === 'store_keeper')>STORE KEEPER</option>
                                 <option value="customer" @selected(old('role', 'customer') === 'customer')>CUSTOMER</option>
                             </select>
                             @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -254,7 +255,7 @@
                             <div class="col-md-4">
                                 <label class="form-label" for="role_{{ $user->id }}">Role</label>
                                 <select id="role_{{ $user->id }}" name="role" class="form-select" required>
-                                    @foreach(['admin', 'hgadmin', 'manager', 'staff', 'user', 'customer'] as $role)
+                                    @foreach(['admin', 'manager', 'store_keeper', 'transporter', 'customer'] as $role)
                                         <option value="{{ $role }}" @selected(($user->role ?? 'user') === $role)>{{ strtoupper($role) }}</option>
                                     @endforeach
                                 </select>

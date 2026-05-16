@@ -20,7 +20,7 @@ class ShipmentController extends Controller
         $query = Shipment::query();
 
         // Filter shipments based on user's country and role
-        if ($userRole !== 'admin' && $userRole !== 'hgadmin') {
+        if ($userRole !== 'admin') {
             if ($userCountry) {
                 $query->where(function($q) use ($userCountry) {
                     $q->where('origin_country', $userCountry)

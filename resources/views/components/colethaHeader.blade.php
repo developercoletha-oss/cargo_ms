@@ -44,7 +44,7 @@
                             <i class="bi bi-speedometer2 header-theme-icon"></i>
                             <span>Dashboard</span>
                         </a>
-                        @if(in_array($userRole, ['admin', 'hgadmin', 'manager', 'staff']))
+                        @if(in_array($userRole, ['admin', 'manager', 'store_keeper', 'transporter']))
                         <a href="{{ route('dashboard.shipments.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
                             <i class="bi bi-box-seam"></i> Shipments
                         </a>

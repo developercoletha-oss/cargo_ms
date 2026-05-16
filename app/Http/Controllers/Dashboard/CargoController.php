@@ -50,7 +50,7 @@ class CargoController extends Controller
         $search = (string) $request->query('search', '');
 
         User::query()
-            ->where('role', 'staff')
+            ->where('role', 'transporter')
             ->get(['id'])
             ->each(function (User $staffUser) {
                 TransportStaff::firstOrCreate(
@@ -72,7 +72,7 @@ class CargoController extends Controller
 
         if ($user->role === 'customer') {
             $query->where('customer_id', $user->id);
-        } elseif ($user->role === 'staff') {
+        } elseif ($user->role === 'transporter') {
             $query->whereHas('transportStaff', function ($staffQ) use ($user) {
                 $staffQ->where('user_id', $user->id);
             });
@@ -83,8 +83,17 @@ class CargoController extends Controller
         $transportStaff = TransportStaff::query()
             ->with('user')
             ->where('is_active', true)
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'transporter');
+            })
             ->orderBy('staff_code')
             ->get();
+
+        $customers = User::query()
+            ->where('role', 'customer')
+            ->where('is_active', true)
+            ->orderBy('full_name')
+            ->get(['id', 'name', 'full_name', 'email']);
 
         $view = $user->role === 'customer'
             ? 'customer.cargo.index'
@@ -94,6 +103,7 @@ class CargoController extends Controller
             'cargoes' => $cargoes,
             'search' => $search,
             'transportStaff' => $transportStaff,
+            'customers' => $customers,
             'user' => $user,
         ]);
     }
@@ -101,14 +111,19 @@ class CargoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        if ($user->role !== 'customer') {
-            abort(403, 'Only customers can create cargo.');
+        if ($user->role !== 'store_keeper') {
+            abort(403, 'Only store keeper can register cargo.');
         }
 
         $validated = $this->validateCargo($request);
+        $customerId = (int) ($request->input('customer_id') ?: $user->id);
+
+        if (! User::where('id', $customerId)->where('role', 'customer')->exists()) {
+            return back()->withInput()->with('error', 'Store keeper must register cargo for a valid customer.');
+        }
 
         $cargo = Cargo::create([
-            'customer_id' => $user->id,
+            'customer_id' => $customerId,
             'origin_country' => 'TZ',
             'origin_city' => $validated['origin_city'],
             'origin_address' => $validated['origin_address'] ?? null,
@@ -170,7 +185,7 @@ class CargoController extends Controller
 
     public function approve(Request $request, Cargo $cargo): RedirectResponse
     {
-        $this->ensureReviewer($request->user());
+        $this->ensureManager($request->user());
 
         if ($cargo->status === 'approved') {
             return back()->with('info', 'Cargo is already approved.');
@@ -190,7 +205,7 @@ class CargoController extends Controller
 
     public function disapprove(Request $request, Cargo $cargo): RedirectResponse
     {
-        $this->ensureReviewer($request->user());
+        $this->ensureManager($request->user());
 
         if ($cargo->status === 'disapproved') {
             return back()->with('info', 'Cargo is already disapproved.');
@@ -209,7 +224,7 @@ class CargoController extends Controller
 
     public function assign(Request $request, Cargo $cargo): RedirectResponse
     {
-        $this->ensureReviewer($request->user());
+        $this->ensureTransportAssignmentManager($request->user());
 
         if ($cargo->status !== 'approved') {
             return back()->with('error', 'Only approved cargo can be assigned.');
@@ -219,11 +234,16 @@ class CargoController extends Controller
             'transport_staff_id' => ['required', Rule::exists('transport_staff', 'id')],
         ]);
 
+        $transportStaff = TransportStaff::with('user')->findOrFail((int) $validated['transport_staff_id']);
+        if ($transportStaff->user?->role !== 'transporter') {
+            return back()->with('error', 'Selected staff is not a transporter.');
+        }
+
         $cargo->update([
             'transport_staff_id' => (int) $validated['transport_staff_id'],
         ]);
 
-        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo assigned to transport officer.');
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo assigned to transporter successfully.');
     }
 
     private function validateCargo(Request $request): array
@@ -267,10 +287,17 @@ class CargoController extends Controller
         ];
     }
 
-    private function ensureReviewer(User $user): void
+    private function ensureManager(User $user): void
     {
-        if (! in_array($user->role, ['admin', 'hgadmin', 'manager', 'staff'], true)) {
-            abort(403, 'Only admin/manager/staff can review cargo.');
+        if (! in_array($user->role, ['admin', 'manager'], true)) {
+            abort(403, 'Only manager or admin can review cargo.');
+        }
+    }
+
+    private function ensureTransportAssignmentManager(User $user): void
+    {
+        if ($user->role !== 'manager') {
+            abort(403, 'Only manager can assign transporter.');
         }
     }
 }

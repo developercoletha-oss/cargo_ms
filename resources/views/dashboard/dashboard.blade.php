@@ -28,7 +28,7 @@
                                 System Overview
                          </h3>
                     </div>
-                    @if(isset($user) && $user->country && in_array($user->role, ['admin','hgadmin','manager','staff']))
+                    @if(isset($user) && $user->country && in_array($user->role, ['admin','manager','store_keeper','transporter']))
                     <div class="d-flex gap-2 align-items-center">
                         <a href="{{ route('dashboard.shipments.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-eye"></i> View All Shipments

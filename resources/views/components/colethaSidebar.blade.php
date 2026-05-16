@@ -1,6 +1,6 @@
 @php
     $currentUser = Auth::user();
-    $userRole = $currentUser?->role ?? 'user';
+    $userRole = $currentUser?->role ?? 'customer';
     $isAdministrationMenuOpen = request()->is('dashboard/profile*') || request()->is('dashboard/settings*') || request()->is('dashboard/users*');
     $isMonitoringMenuOpen = request()->is('dashboard/notifications*');
     $isShipmentsMenuOpen = request()->is('dashboard/shipments*');
@@ -28,7 +28,7 @@
                 </a>
             </li>
 
-            @if(in_array($userRole, ['admin', 'hgadmin', 'manager', 'staff']))
+            @if(in_array($userRole, ['admin', 'manager', 'store_keeper', 'transporter']))
             <li class="nav-item">
                 <a href="{{ route('dashboard.shipments.index') }}"
                     class="nav-link {{ request()->routeIs('dashboard.shipments.*') ? 'active' : '' }}">
@@ -37,7 +37,7 @@
             </li>
             @endif
 
-            @if(in_array($userRole, ['customer', 'admin', 'hgadmin', 'manager', 'staff']))
+            @if(in_array($userRole, ['customer', 'admin', 'manager', 'store_keeper', 'transporter']))
             <li class="nav-item">
                 <a href="{{ route('dashboard.cargo.index') }}"
                     class="nav-link {{ request()->routeIs('dashboard.cargo.*') ? 'active' : '' }}">
@@ -53,7 +53,7 @@
                 </a>
             </li>
 
-            @if(in_array($userRole, ['admin', 'hgadmin']))
+            @if(in_array($userRole, ['admin']))
             <li class="nav-item">
                 <a href="{{ route('dashboard.users.index') }}"
                     class="nav-link {{ request()->is('dashboard/users*') ? 'active' : '' }}">

@@ -2,21 +2,23 @@
 
 @php
     $isCustomer = $user->role === 'customer';
-    $canReview = in_array($user->role, ['admin', 'hgadmin', 'manager', 'staff'], true);
+    $canReview = in_array($user->role, ['admin', 'manager'], true);
+    $canAssign = $user->role === 'manager';
 @endphp
 
 @section('page_header_actions')
-    @if($isCustomer)
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCargoModal">
-            <i class="bi bi-plus-circle me-1"></i> Create Cargo
-        </button>
-    @endif
 @endsection
 
 @section('content')
 <div class="container-fluid px-3 px-lg-4 py-3">
     <div class="card border-0 shadow-sm">
         <div class="card-body">
+            @if(in_array($user->role, ['store_keeper', 'admin'], true))
+                <div class="alert alert-info py-2 px-3 mb-3">
+                    Transporter assignment is manager-only after cargo approval.
+                </div>
+            @endif
+
             <form method="GET" action="{{ route('dashboard.cargo.index') }}" class="row g-2 mb-3">
                 <div class="col-md-5">
                     <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search origin/destination...">
@@ -88,29 +90,6 @@
     </div>
 </div>
 
-@if($isCustomer)
-<div class="modal fade" id="addCargoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <form method="POST" action="{{ route('dashboard.cargo.store') }}">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Create Cargo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    @include('customer.cargo.partials.form')
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit Cargo</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
-
 @foreach($cargoes as $cargo)
     @php
         $isOwner = (int) $cargo->customer_id === (int) $user->id;
@@ -140,7 +119,7 @@
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex gap-2">
-                        @if($canReview)
+                            @if($canReview)
                             @if($cargo->status !== 'approved')
                                 <form method="POST" action="{{ route('dashboard.cargo.approve', $cargo) }}">
                                     @csrf
@@ -153,7 +132,7 @@
                                     <button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Disapprove</button>
                                 </form>
                             @endif
-                            @if($cargo->status === 'approved')
+                            @if($canAssign && $cargo->status === 'approved')
                                 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignCargoModal-{{ $cargo->id }}">
                                     <i class="bi bi-person-check me-1"></i>Assign Officer
                                 </button>
@@ -190,7 +169,7 @@
         </div>
     @endif
 
-    @if($canReview && $cargo->status === 'approved')
+    @if($canAssign && $cargo->status === 'approved')
         <div class="modal fade" id="assignCargoModal-{{ $cargo->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-md modal-dialog-centered">
                 <div class="modal-content">

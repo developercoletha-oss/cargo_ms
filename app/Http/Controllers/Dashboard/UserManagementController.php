@@ -134,7 +134,7 @@ class UserManagementController extends Controller
             'full_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'phone' => ['nullable', 'string', 'max:30'],
-            'role' => ['required', Rule::in(['admin', 'hgadmin', 'manager', 'staff', 'user', 'customer'])],
+            'role' => ['required', Rule::in(['admin', 'manager', 'customer', 'transporter', 'store_keeper'])],
             'address' => ['nullable', 'string', 'max:500'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'size:2'],

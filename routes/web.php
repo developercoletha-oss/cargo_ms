@@ -27,23 +27,29 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     
     // Shipments (role-based access)
-    Route::middleware('role:admin,hgadmin,manager,staff')->group(function () {
+    Route::middleware('role:admin,manager,store_keeper,transporter')->group(function () {
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
     });
 
     // Cargo workflow
-    Route::middleware('role:customer,admin,hgadmin,manager,staff')->group(function () {
+    Route::middleware('role:customer,admin,manager,store_keeper,transporter')->group(function () {
         Route::get('/cargo', [CargoController::class, 'index'])->name('cargo.index');
-        Route::post('/cargo', [CargoController::class, 'store'])->name('cargo.store');
         Route::put('/cargo/{cargo}', [CargoController::class, 'update'])->name('cargo.update');
         Route::delete('/cargo/{cargo}', [CargoController::class, 'destroy'])->name('cargo.destroy');
         Route::post('/cargo/{cargo}/approve', [CargoController::class, 'approve'])->name('cargo.approve');
         Route::post('/cargo/{cargo}/disapprove', [CargoController::class, 'disapprove'])->name('cargo.disapprove');
+    });
+
+    Route::middleware('role:store_keeper')->group(function () {
+        Route::post('/cargo', [CargoController::class, 'store'])->name('cargo.store');
+    });
+
+    Route::middleware('role:manager')->group(function () {
         Route::post('/cargo/{cargo}/assign', [CargoController::class, 'assign'])->name('cargo.assign');
     });
 
-    // User Management (admin + hgadmin)
-    Route::middleware('role:admin,hgadmin')->group(function () {
+    // User Management (admin)
+    Route::middleware('role:admin')->group(function () {
         Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])->name('users.approve');
         Route::post('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
         Route::resource('users', UserManagementController::class)
