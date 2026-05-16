@@ -232,7 +232,7 @@ class CargoController extends Controller
 
         $validated = $request->validate([
             'transport_staff_id' => ['required', Rule::exists('transport_staff', 'id')],
-            'pickup_date' => ['required', 'date'],
+            'pickup_date' => ['nullable', 'date'],
             'delivery_date' => ['nullable', 'date', 'after_or_equal:pickup_date'],
         ]);
 
@@ -243,8 +243,8 @@ class CargoController extends Controller
 
         $cargo->update([
             'transport_staff_id' => (int) $validated['transport_staff_id'],
-            'pickup_date' => $validated['pickup_date'],
-            'delivery_date' => $validated['delivery_date'] ?? null,
+            'pickup_date' => $validated['pickup_date'] ?? $cargo->pickup_date,
+            'delivery_date' => $validated['delivery_date'] ?? $cargo->delivery_date,
             'signed_by_transporter' => null,
             'signed_at' => null,
             'handover_confirmed_by' => null,

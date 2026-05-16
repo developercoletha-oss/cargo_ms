@@ -100,7 +100,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        @include('customer.cargo.partials.form', ['hideScheduleFields' => true])
+                        @include('customer.cargo.partials.form')
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -214,7 +214,7 @@
                             <div class="mt-3">
                                 <label class="form-label" for="pickup_date_{{ $cargo->id }}">Pickup Date</label>
                                 <input id="pickup_date_{{ $cargo->id }}" type="date" name="pickup_date" class="form-control"
-                                    value="{{ old('pickup_date', optional($cargo->pickup_date)->format('Y-m-d')) }}" required>
+                                    value="{{ old('pickup_date', optional($cargo->pickup_date)->format('Y-m-d')) }}">
                             </div>
                             <div class="mt-3">
                                 <label class="form-label" for="delivery_date_{{ $cargo->id }}">Delivery Date</label>
