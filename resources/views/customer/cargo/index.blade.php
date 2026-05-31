@@ -21,7 +21,7 @@
 
             <form method="GET" action="{{ route('dashboard.cargo.index') }}" class="row g-2 mb-3">
                 <div class="col-md-5">
-                    <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search origin/destination...">
+                    <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search tracking number/origin/destination...">
                 </div>
                 <div class="col-auto">
                     <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
@@ -33,6 +33,7 @@
                 <table class="table align-middle">
                     <thead>
                         <tr>
+                            <th>Tracking No.</th>
                             <th>Route</th>
                             <th>Customer</th>
                             <th>Cargo</th>
@@ -46,9 +47,10 @@
                             @php
                                 $isOwner = (int) $cargo->customer_id === (int) $user->id;
                                 $isPending = $cargo->status === 'pending';
-                                $statusClass = $cargo->status === 'approved' ? 'success' : ($cargo->status === 'disapproved' ? 'danger' : 'warning');
+                                $statusClass = $cargo->statusBadgeClass();
                             @endphp
                             <tr>
+                                <td><strong>{{ $cargo->tracking_number }}</strong></td>
                                 <td>
                                     <strong>{{ strtoupper($cargo->origin_country) }} - {{ $cargo->origin_city }}</strong><br>
                                     <small class="text-muted">to {{ strtoupper($cargo->destination_country) }} - {{ $cargo->destination_city }}</small>
@@ -58,7 +60,7 @@
                                     <div>{{ $cargo->detail?->description }}</div>
                                     <small class="text-muted">{{ number_format((float) ($cargo->detail?->weight_kg ?? 0), 2) }} kg</small>
                                 </td>
-                                <td><span class="badge text-bg-{{ $statusClass }}">{{ strtoupper($cargo->status) }}</span></td>
+                                <td><span class="badge text-bg-{{ $statusClass }}">{{ $cargo->statusLabel() }}</span></td>
                                 <td>{{ $cargo->transportStaff?->user?->full_name ?: $cargo->transportStaff?->user?->name ?: 'Unassigned' }}</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewCargoModal-{{ $cargo->id }}">
@@ -77,7 +79,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">No cargo found.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">No cargo found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -104,6 +106,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
+                        <div class="col-md-6"><strong>Tracking No.:</strong> {{ $cargo->tracking_number }}</div>
                         <div class="col-md-6"><strong>From:</strong> {{ strtoupper($cargo->origin_country) }} / {{ $cargo->origin_city }}</div>
                         <div class="col-md-6"><strong>To:</strong> {{ strtoupper($cargo->destination_country) }} / {{ $cargo->destination_city }}</div>
                         <div class="col-md-6"><strong>Pickup Date:</strong> {{ optional($cargo->pickup_date)->format('d M Y') ?: '-' }}</div>
@@ -114,19 +117,21 @@
                         <div class="col-md-6"><strong>Value:</strong> {{ $cargo->detail?->estimated_value ?? '-' }}</div>
                         <div class="col-12"><strong>Description:</strong> {{ $cargo->detail?->description }}</div>
                         <div class="col-12"><strong>Special Instructions:</strong> {{ $cargo->detail?->special_instructions ?: '-' }}</div>
-                        <div class="col-12"><strong>Status:</strong> {{ strtoupper($cargo->status) }}</div>
+                        <div class="col-12"><strong>Status:</strong> {{ $cargo->statusLabel() }}</div>
+                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Live GPS location' : '-') }}</div>
+                        <div class="col-md-6"><strong>Location Updated:</strong> {{ optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-' }}</div>
                     </div>
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex gap-2">
                             @if($canReview)
-                            @if($cargo->status !== 'approved')
+                            @if($cargo->status === 'pending')
                                 <form method="POST" action="{{ route('dashboard.cargo.approve', $cargo) }}">
                                     @csrf
                                     <button class="btn btn-success" type="submit"><i class="bi bi-check-circle me-1"></i>Approve</button>
                                 </form>
                             @endif
-                            @if($cargo->status !== 'disapproved')
+                            @if($cargo->status === 'pending')
                                 <form method="POST" action="{{ route('dashboard.cargo.disapprove', $cargo) }}">
                                     @csrf
                                     <button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Disapprove</button>

@@ -24,9 +24,9 @@
                 <div class="dashboard-panel__header">
                     <div>
                         <span class="dashboard-panel__eyebrow">Quick Summary</span>
-                         <h3 class="dashboard-panel__title">
-                                System Overview
-                         </h3>
+                        <h3 class="dashboard-panel__title">
+                            {{ isset($user) && $user->role === 'customer' ? 'Cargo Overview' : 'System Overview' }}
+                        </h3>
                     </div>
                     @if(isset($user) && $user->country && in_array($user->role, ['admin','manager','store_keeper','transporter']))
                     <div class="d-flex gap-2 align-items-center">
@@ -100,6 +100,59 @@
                                 <td>
                                     <a href="{{ route('dashboard.shipments.index') }}?search={{ $shipment->tracking_number }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-search"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+    @endif
+
+    @if(isset($recentCargo) && $recentCargo->isNotEmpty())
+    <div class="row g-3 g-xl-4 mb-4">
+        <div class="col-12">
+            <section class="dashboard-panel">
+                <div class="dashboard-panel__header">
+                    <div>
+                        <span class="dashboard-panel__eyebrow">My Activity</span>
+                        <h3 class="dashboard-panel__title">Latest Cargo</h3>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-geo-alt me-1"></i> Track Cargo
+                        </a>
+                        <a href="{{ route('dashboard.cargo.index') }}" class="btn btn-outline-secondary btn-sm">
+                            View All
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tracking No.</th>
+                                <th>Route</th>
+                                <th>Cargo</th>
+                                <th>Status</th>
+                                <th>Transporter</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($recentCargo as $cargo)
+                            <tr>
+                                <td><strong>{{ $cargo->tracking_number }}</strong></td>
+                                <td>{{ $cargo->origin_city }} to {{ $cargo->destination_city }}</td>
+                                <td>{{ $cargo->detail?->description ?: '-' }}</td>
+                                <td><span class="badge text-bg-{{ $cargo->statusBadgeClass() }}">{{ $cargo->statusLabel() }}</span></td>
+                                <td>{{ $cargo->transportStaff?->user?->full_name ?: $cargo->transportStaff?->user?->name ?: 'Not assigned' }}</td>
+                                <td class="text-end">
+                                    <a href="{{ route('dashboard.cargo-map', ['cargo_id' => $cargo->id]) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-geo-alt"></i>
                                     </a>
                                 </td>
                             </tr>

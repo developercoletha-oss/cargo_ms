@@ -23,6 +23,13 @@
     </div>
 
         <div class="d-flex align-items-center gap-2">
+            @if($userRole === 'customer')
+                <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-2">
+                    <i class="bi bi-geo-alt"></i>
+                    <span>Track Cargo</span>
+                </a>
+            @endif
+
             <div class="dropdown">
                 <button
                     class="btn btn-light border rounded-circle d-flex align-items-center justify-content-center shadow-sm header-action-btn"
@@ -44,6 +51,12 @@
                             <i class="bi bi-speedometer2 header-theme-icon"></i>
                             <span>Dashboard</span>
                         </a>
+                        @if($userRole === 'customer')
+                        <a href="{{ route('dashboard.cargo-map') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
+                            <i class="bi bi-geo-alt header-theme-icon"></i>
+                            <span>Track Cargo</span>
+                        </a>
+                        @endif
                         @if(in_array($userRole, ['admin', 'manager', 'store_keeper', 'transporter']))
                         <a href="{{ route('dashboard.shipments.index') }}" class="dropdown-item d-flex align-items-center gap-2 py-2">
                             <i class="bi bi-box-seam"></i> Shipments

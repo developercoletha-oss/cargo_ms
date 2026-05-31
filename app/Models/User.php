@@ -60,9 +60,6 @@ class User extends Authenticatable
      */
     public function systemNotifications()
     {
-        // Audit trails use polymorphic actor (actor_id and actor_type)
-        return $this->hasMany(AuditTrail::class, 'actor_id')
-            ->where('actor_type', User::class)
-            ->whereRaw('1 = 0');
+        return $this->hasMany(SystemNotification::class);
     }
 }

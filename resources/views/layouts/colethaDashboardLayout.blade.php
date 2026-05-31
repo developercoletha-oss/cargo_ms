@@ -40,6 +40,10 @@
                 'title' => 'User Management',
                 'subtitle' => 'Create, review, update, and remove system users.',
             ],
+            request()->is('dashboard/cargo-tracking*') => [
+                'title' => 'Track Cargo',
+                'subtitle' => 'View your cargo movement on the OpenStreetMap tracking workspace.',
+            ],
             request()->is('dashboard/cargo*') => [
                 'title' => 'Cargo Management',
                 'subtitle' => 'Create cargo requests, review approvals, and assign transport officers.',

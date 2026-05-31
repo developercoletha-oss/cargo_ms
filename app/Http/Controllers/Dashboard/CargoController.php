@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cargo;
+use App\Models\CargoLocationUpdate;
+use App\Models\SystemNotification;
 use App\Models\TransportStaff;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -44,6 +47,37 @@ class CargoController extends Controller
         'Zanzibar',
     ];
 
+    private const AREA_COORDINATES = [
+        'Arusha' => [-3.3869, 36.6830],
+        'Dar es Salaam' => [-6.7924, 39.2083],
+        'Dodoma' => [-6.1630, 35.7516],
+        'Geita' => [-2.8725, 32.2320],
+        'Iringa' => [-7.7708, 35.6923],
+        'Kagera' => [-1.9403, 31.1820],
+        'Katavi' => [-6.3670, 31.0409],
+        'Kigoma' => [-4.8824, 29.6615],
+        'Kilimanjaro' => [-3.0674, 37.3556],
+        'Lindi' => [-9.9969, 39.7144],
+        'Manyara' => [-4.3150, 36.9541],
+        'Mara' => [-1.7754, 34.1532],
+        'Mbeya' => [-8.9094, 33.4608],
+        'Morogoro' => [-6.8278, 37.6591],
+        'Mtwara' => [-10.2676, 40.1833],
+        'Mwanza' => [-2.5164, 32.9175],
+        'Njombe' => [-9.3492, 34.7718],
+        'Pemba' => [-5.2050, 39.7756],
+        'Pwani' => [-7.3238, 38.8205],
+        'Rukwa' => [-7.9667, 31.6167],
+        'Ruvuma' => [-10.6879, 35.6501],
+        'Shinyanga' => [-3.6619, 33.4231],
+        'Simiyu' => [-2.8309, 34.1532],
+        'Singida' => [-4.8163, 34.7436],
+        'Songwe' => [-8.2726, 32.9308],
+        'Tabora' => [-5.0342, 32.8084],
+        'Tanga' => [-5.0889, 39.1023],
+        'Zanzibar' => [-6.1659, 39.2026],
+    ];
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -64,6 +98,7 @@ class CargoController extends Controller
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
                     $inner->where('origin_city', 'like', "%{$search}%")
+                        ->orWhere('tracking_number', 'like', "%{$search}%")
                         ->orWhere('destination_city', 'like', "%{$search}%")
                         ->orWhere('origin_country', 'like', "%{$search}%")
                         ->orWhere('destination_country', 'like', "%{$search}%");
@@ -132,12 +167,13 @@ class CargoController extends Controller
             'destination_address' => $validated['destination_address'] ?? null,
             'pickup_date' => $validated['pickup_date'] ?? null,
             'delivery_date' => $validated['delivery_date'] ?? null,
-            'status' => 'pending',
+            'status' => Cargo::STATUS_PENDING,
         ]);
 
         $cargo->detail()->create($this->detailPayload($validated));
+        $this->notifyCustomerTrackingNumber($cargo);
 
-        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo created successfully.');
+        return redirect()->route('dashboard.cargo.index')->with('success', "Cargo created successfully. Tracking number: {$cargo->tracking_number}");
     }
 
     public function update(Request $request, Cargo $cargo): RedirectResponse
@@ -146,7 +182,7 @@ class CargoController extends Controller
         if ($user->role !== 'customer' || $cargo->customer_id !== $user->id) {
             abort(403, 'You can only edit your own cargo.');
         }
-        if ($cargo->status !== 'pending') {
+        if ($cargo->status !== Cargo::STATUS_PENDING) {
             return back()->with('error', 'Approved/disapproved cargo cannot be edited.');
         }
 
@@ -174,7 +210,7 @@ class CargoController extends Controller
         if ($user->role !== 'customer' || $cargo->customer_id !== $user->id) {
             abort(403, 'You can only delete your own cargo.');
         }
-        if ($cargo->status !== 'pending') {
+        if ($cargo->status !== Cargo::STATUS_PENDING) {
             return back()->with('error', 'Approved/disapproved cargo cannot be deleted.');
         }
 
@@ -187,12 +223,16 @@ class CargoController extends Controller
     {
         $this->ensureManager($request->user());
 
-        if ($cargo->status === 'approved') {
+        if ($cargo->status !== Cargo::STATUS_PENDING) {
+            return back()->with('error', 'Only pending cargo can be approved.');
+        }
+
+        if ($cargo->status === Cargo::STATUS_APPROVED) {
             return back()->with('info', 'Cargo is already approved.');
         }
 
         $cargo->update([
-            'status' => 'approved',
+            'status' => Cargo::STATUS_APPROVED,
             'approval_note' => $request->input('approval_note'),
             'approved_by' => $request->user()->id,
             'approved_at' => now(),
@@ -207,12 +247,16 @@ class CargoController extends Controller
     {
         $this->ensureManager($request->user());
 
-        if ($cargo->status === 'disapproved') {
+        if ($cargo->status !== Cargo::STATUS_PENDING) {
+            return back()->with('error', 'Only pending cargo can be disapproved.');
+        }
+
+        if ($cargo->status === Cargo::STATUS_DISAPPROVED) {
             return back()->with('info', 'Cargo is already disapproved.');
         }
 
         $cargo->update([
-            'status' => 'disapproved',
+            'status' => Cargo::STATUS_DISAPPROVED,
             'approval_note' => $request->input('approval_note'),
             'disapproved_by' => $request->user()->id,
             'disapproved_at' => now(),
@@ -226,7 +270,7 @@ class CargoController extends Controller
     {
         $this->ensureTransportAssignmentManager($request->user());
 
-        if ($cargo->status !== 'approved') {
+        if ($cargo->status !== Cargo::STATUS_APPROVED) {
             return back()->with('error', 'Only approved cargo can be assigned.');
         }
 
@@ -266,7 +310,7 @@ class CargoController extends Controller
             return back()->with('error', 'You can only sign cargo assigned to you.');
         }
 
-        if ($cargo->status !== 'approved') {
+        if ($cargo->status !== Cargo::STATUS_APPROVED) {
             return back()->with('error', 'Only approved cargo can be signed.');
         }
 
@@ -300,11 +344,78 @@ class CargoController extends Controller
         }
 
         $cargo->update([
+            'status' => Cargo::STATUS_IN_TRANSIT,
+            ...$this->locationPayload($cargo->origin_city),
             'handover_confirmed_by' => $user->id,
             'handover_confirmed_at' => now(),
         ]);
+        $this->recordLocationUpdate($cargo, $user->id, $cargo->origin_city, (float) $cargo->current_location_lat, (float) $cargo->current_location_lng, 'handover');
 
-        return redirect()->route('dashboard.cargo.index')->with('success', 'Warehouse handover confirmed successfully.');
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Warehouse handover confirmed. Cargo is now in transit.');
+    }
+
+    public function liveLocation(Request $request, Cargo $cargo): JsonResponse
+    {
+        $this->ensureAssignedTransporter($request->user(), $cargo);
+
+        if ($cargo->status !== Cargo::STATUS_IN_TRANSIT) {
+            return response()->json([
+                'message' => 'Only cargo in transit can receive live GPS updates.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $cargo->update([
+            'current_location_city' => null,
+            'current_location_lat' => $validated['latitude'],
+            'current_location_lng' => $validated['longitude'],
+            'current_location_updated_at' => now(),
+        ]);
+        $this->recordLocationUpdate($cargo, $request->user()->id, null, (float) $validated['latitude'], (float) $validated['longitude'], 'gps');
+
+        return response()->json([
+            'message' => 'Live location updated.',
+            'updated_at' => optional($cargo->current_location_updated_at)->format('d M Y H:i'),
+        ]);
+    }
+
+    public function markArrived(Request $request, Cargo $cargo): RedirectResponse
+    {
+        $this->ensureAssignedTransporter($request->user(), $cargo);
+
+        if ($cargo->status !== Cargo::STATUS_IN_TRANSIT) {
+            return back()->with('error', 'Only cargo in transit can be marked as arrived.');
+        }
+
+        $cargo->update([
+            'status' => Cargo::STATUS_ARRIVED,
+            ...$this->locationPayload($cargo->destination_city),
+        ]);
+        $this->recordLocationUpdate($cargo, $request->user()->id, $cargo->destination_city, (float) $cargo->current_location_lat, (float) $cargo->current_location_lng, 'arrived');
+
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo marked as arrived.');
+    }
+
+    public function markDelivered(Request $request, Cargo $cargo): RedirectResponse
+    {
+        $this->ensureAssignedTransporter($request->user(), $cargo);
+
+        if ($cargo->status !== Cargo::STATUS_ARRIVED) {
+            return back()->with('error', 'Only arrived cargo can be marked as delivered.');
+        }
+
+        $cargo->update([
+            'status' => Cargo::STATUS_DELIVERED,
+            ...$this->locationPayload($cargo->destination_city),
+            'delivery_date' => $cargo->delivery_date ?: now()->toDateString(),
+        ]);
+        $this->recordLocationUpdate($cargo, $request->user()->id, $cargo->destination_city, (float) $cargo->current_location_lat, (float) $cargo->current_location_lng, 'delivered');
+
+        return redirect()->route('dashboard.cargo.index')->with('success', 'Cargo marked as delivered.');
     }
 
     private function validateCargo(Request $request): array
@@ -360,5 +471,61 @@ class CargoController extends Controller
         if ($user->role !== 'manager') {
             abort(403, 'Only manager can assign transporter.');
         }
+    }
+
+    private function ensureAssignedTransporter(User $user, Cargo $cargo): void
+    {
+        if ($user->role !== 'transporter') {
+            abort(403, 'Only transporter can update cargo movement.');
+        }
+
+        $transportStaff = TransportStaff::query()->where('user_id', $user->id)->first();
+        if (! $transportStaff || (int) $cargo->transport_staff_id !== (int) $transportStaff->id) {
+            abort(403, 'You can only update cargo assigned to you.');
+        }
+    }
+
+    private function notifyCustomerTrackingNumber(Cargo $cargo): void
+    {
+        SystemNotification::create([
+            'user_id' => $cargo->customer_id,
+            'title' => 'Cargo tracking number generated',
+            'message' => "Your cargo has been registered successfully. Tracking number: {$cargo->tracking_number}. Use it to track your cargo movement.",
+            'status' => 'unread',
+            'metadata' => [
+                'cargo_id' => $cargo->id,
+                'tracking_number' => $cargo->tracking_number,
+                'tracking_url' => route('tracking.show', ['tracking_number' => $cargo->tracking_number]),
+            ],
+        ]);
+    }
+
+    private function locationPayload(string $city): array
+    {
+        $coordinates = self::AREA_COORDINATES[$city] ?? [null, null];
+
+        return [
+            'current_location_city' => $city,
+            'current_location_lat' => $coordinates[0],
+            'current_location_lng' => $coordinates[1],
+            'current_location_updated_at' => now(),
+        ];
+    }
+
+    private function recordLocationUpdate(Cargo $cargo, ?int $reportedBy, ?string $locationName, ?float $latitude, ?float $longitude, string $source): void
+    {
+        if ($latitude === null || $longitude === null) {
+            return;
+        }
+
+        CargoLocationUpdate::create([
+            'cargo_id' => $cargo->id,
+            'reported_by' => $reportedBy,
+            'location_name' => $locationName,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'source' => $source,
+            'recorded_at' => now(),
+        ]);
     }
 }

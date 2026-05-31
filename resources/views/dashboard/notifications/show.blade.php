@@ -6,6 +6,11 @@
             <div class="card-body p-4">
                 <h2 class="h5 mb-2">{{ $notification->title ?? 'Notification' }}</h2>
                 <p class="text-muted mb-0">{{ $notification->message ?? 'No message available.' }}</p>
+                @if(! empty($notification->metadata['tracking_url']))
+                    <a href="{{ $notification->metadata['tracking_url'] }}" class="btn btn-primary mt-3">
+                        <i class="bi bi-search me-1"></i> Track Cargo
+                    </a>
+                @endif
             </div>
         </div>
     </div>

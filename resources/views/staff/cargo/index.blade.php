@@ -5,6 +5,16 @@
     $canAssign = $user->role === 'manager';
     $canRegisterCargo = $user->role === 'store_keeper';
     $isTransporter = $user->role === 'transporter';
+    $liveTrackingCargoes = $isTransporter
+        ? $cargoes->getCollection()
+            ->filter(fn ($cargo) => $cargo->status === 'in_transit' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
+            ->map(fn ($cargo) => [
+                'id' => $cargo->id,
+                'tracking_number' => $cargo->tracking_number,
+                'endpoint' => route('dashboard.cargo.live-location', $cargo),
+            ])
+            ->values()
+        : collect();
 @endphp
 
 @section('page_header_actions')
@@ -19,9 +29,16 @@
 <div class="container-fluid px-3 px-lg-4 py-3">
     <div class="card border-0 shadow-sm">
         <div class="card-body">
+            @if($liveTrackingCargoes->isNotEmpty())
+                <div class="alert alert-info py-2 px-3 mb-3" id="liveGpsStatus">
+                    <i class="bi bi-broadcast-pin me-1"></i>
+                    Live GPS tracking is starting. Allow location access when your browser asks.
+                </div>
+            @endif
+
             <form method="GET" action="{{ route('dashboard.cargo.index') }}" class="row g-2 mb-3">
                 <div class="col-md-5">
-                    <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search origin/destination...">
+                    <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search tracking number/origin/destination...">
                 </div>
                 <div class="col-auto">
                     <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
@@ -33,6 +50,7 @@
                 <table class="table align-middle">
                     <thead>
                         <tr>
+                            <th>Tracking No.</th>
                             <th>Route</th>
                             <th>Customer</th>
                             <th>Cargo</th>
@@ -44,9 +62,10 @@
                     <tbody>
                         @forelse($cargoes as $cargo)
                             @php
-                                $statusClass = $cargo->status === 'approved' ? 'success' : ($cargo->status === 'disapproved' ? 'danger' : 'warning');
+                                $statusClass = $cargo->statusBadgeClass();
                             @endphp
                             <tr>
+                                <td><strong>{{ $cargo->tracking_number }}</strong></td>
                                 <td>
                                     <strong>{{ strtoupper($cargo->origin_country) }} - {{ $cargo->origin_city }}</strong><br>
                                     <small class="text-muted">to {{ strtoupper($cargo->destination_country) }} - {{ $cargo->destination_city }}</small>
@@ -56,7 +75,7 @@
                                     <div>{{ $cargo->detail?->description }}</div>
                                     <small class="text-muted">{{ number_format((float) ($cargo->detail?->weight_kg ?? 0), 2) }} kg</small>
                                 </td>
-                                <td><span class="badge text-bg-{{ $statusClass }}">{{ strtoupper($cargo->status) }}</span></td>
+                                <td><span class="badge text-bg-{{ $statusClass }}">{{ $cargo->statusLabel() }}</span></td>
                                 <td>{{ $cargo->transportStaff?->user?->full_name ?: $cargo->transportStaff?->user?->name ?: 'Unassigned' }}</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewCargoModal-{{ $cargo->id }}">
@@ -65,7 +84,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">No cargo found.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">No cargo found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -122,6 +141,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
+                        <div class="col-md-6"><strong>Tracking No.:</strong> {{ $cargo->tracking_number }}</div>
                         <div class="col-md-6"><strong>From:</strong> {{ strtoupper($cargo->origin_country) }} / {{ $cargo->origin_city }}</div>
                         <div class="col-md-6"><strong>To:</strong> {{ strtoupper($cargo->destination_country) }} / {{ $cargo->destination_city }}</div>
                         <div class="col-md-6"><strong>Pickup Date:</strong> {{ optional($cargo->pickup_date)->format('d M Y') ?: '-' }}</div>
@@ -132,7 +152,9 @@
                         <div class="col-md-6"><strong>Value:</strong> {{ $cargo->detail?->estimated_value ?? '-' }}</div>
                         <div class="col-12"><strong>Description:</strong> {{ $cargo->detail?->description }}</div>
                         <div class="col-12"><strong>Special Instructions:</strong> {{ $cargo->detail?->special_instructions ?: '-' }}</div>
-                        <div class="col-12"><strong>Status:</strong> {{ strtoupper($cargo->status) }}</div>
+                        <div class="col-12"><strong>Status:</strong> {{ $cargo->statusLabel() }}</div>
+                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Live GPS location' : '-') }}</div>
+                        <div class="col-md-6"><strong>Location Updated:</strong> {{ optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-' }}</div>
                         <div class="col-12">
                             <strong>Transporter Sign:</strong>
                             @if($cargo->signed_at)
@@ -154,13 +176,13 @@
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex gap-2">
                             @if($canReview)
-                            @if($cargo->status !== 'approved')
+                            @if($cargo->status === 'pending')
                                 <form method="POST" action="{{ route('dashboard.cargo.approve', $cargo) }}">
                                     @csrf
                                     <button class="btn btn-success" type="submit"><i class="bi bi-check-circle me-1"></i>Approve</button>
                                 </form>
                             @endif
-                            @if($cargo->status !== 'disapproved')
+                            @if($cargo->status === 'pending')
                                 <form method="POST" action="{{ route('dashboard.cargo.disapprove', $cargo) }}">
                                     @csrf
                                     <button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Disapprove</button>
@@ -176,6 +198,18 @@
                             <form method="POST" action="{{ route('dashboard.cargo.sign', $cargo) }}">
                                 @csrf
                                 <button class="btn btn-primary" type="submit"><i class="bi bi-pen me-1"></i>Sign Cargo</button>
+                            </form>
+                        @endif
+                        @if($isTransporter && $cargo->status === 'in_transit' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
+                            <form method="POST" action="{{ route('dashboard.cargo.mark-arrived', $cargo) }}">
+                                @csrf
+                                <button class="btn btn-info" type="submit"><i class="bi bi-geo-alt me-1"></i>Mark Arrived</button>
+                            </form>
+                        @endif
+                        @if($isTransporter && $cargo->status === 'arrived' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
+                            <form method="POST" action="{{ route('dashboard.cargo.mark-delivered', $cargo) }}">
+                                @csrf
+                                <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle me-1"></i>Mark Delivered</button>
                             </form>
                         @endif
                         @if($canRegisterCargo && $cargo->status === 'approved' && $cargo->signed_at && ! $cargo->handover_confirmed_at)
@@ -233,3 +267,68 @@
     @endif
 @endforeach
 @endsection
+
+@push('scripts')
+@if($liveTrackingCargoes->isNotEmpty())
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const liveCargoes = @json($liveTrackingCargoes);
+    const statusEl = document.getElementById('liveGpsStatus');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    let lastSentAt = 0;
+
+    const setStatus = (message, tone = 'info') => {
+        if (!statusEl) return;
+        statusEl.className = `alert alert-${tone} py-2 px-3 mb-3`;
+        statusEl.innerHTML = `<i class="bi bi-broadcast-pin me-1"></i>${message}`;
+    };
+
+    if (!navigator.geolocation) {
+        setStatus('This browser does not support live GPS tracking.', 'warning');
+        return;
+    }
+
+    const sendLocation = async (position) => {
+        const now = Date.now();
+        if (now - lastSentAt < 15000) return;
+        lastSentAt = now;
+
+        const payload = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+        };
+
+        await Promise.all(liveCargoes.map((cargo) => fetch(cargo.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        })));
+
+        setStatus(`Live GPS is active for ${liveCargoes.length} in-transit cargo item(s). Last sent: ${new Date().toLocaleTimeString()}`, 'success');
+    };
+
+    navigator.geolocation.watchPosition(
+        (position) => {
+            sendLocation(position).catch(() => {
+                setStatus('Live GPS is available, but the latest location could not be sent.', 'warning');
+            });
+        },
+        () => {
+            setStatus('Location access is required for live cargo tracking.', 'warning');
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 10000,
+            timeout: 20000,
+        }
+    );
+});
+</script>
+@endif
+@endpush

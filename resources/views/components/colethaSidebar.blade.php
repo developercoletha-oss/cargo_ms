@@ -40,8 +40,17 @@
             @if(in_array($userRole, ['customer', 'admin', 'manager', 'store_keeper', 'transporter']))
             <li class="nav-item">
                 <a href="{{ route('dashboard.cargo.index') }}"
-                    class="nav-link {{ request()->routeIs('dashboard.cargo.*') ? 'active' : '' }}">
+                    class="nav-link {{ request()->routeIs('dashboard.cargo.index') ? 'active' : '' }}">
                     <i class="bi bi-box2-heart"></i> Cargo
+                </a>
+            </li>
+            @endif
+
+            @if($userRole === 'customer')
+            <li class="nav-item">
+                <a href="{{ route('dashboard.cargo-map') }}"
+                    class="nav-link {{ request()->routeIs('dashboard.cargo-map') ? 'active' : '' }}">
+                    <i class="bi bi-geo-alt"></i> Track Cargo
                 </a>
             </li>
             @endif

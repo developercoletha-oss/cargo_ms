@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('destination_address')->nullable();
             $table->date('pickup_date')->nullable();
             $table->date('delivery_date')->nullable();
-            $table->enum('status', ['pending', 'approved', 'disapproved'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'disapproved', 'in_transit', 'arrived', 'delivered'])->default('pending');
             $table->text('approval_note')->nullable();
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();

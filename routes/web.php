@@ -2,16 +2,19 @@
 
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\CargoController;
+use App\Http\Controllers\Dashboard\CargoTrackingMapController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\ShipmentController;
 use App\Http\Controllers\Dashboard\UserManagementController;
+use App\Http\Controllers\CargoTrackingController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
 require __DIR__.'/auth.php';
 Route::view('/home', 'home');
 Route::view('/about', 'about')->name('about');
+Route::get('/track', CargoTrackingController::class)->name('tracking.show');
 
 Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('index');
@@ -40,6 +43,11 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
         Route::post('/cargo/{cargo}/disapprove', [CargoController::class, 'disapprove'])->name('cargo.disapprove');
     });
 
+    Route::middleware('role:customer')->group(function () {
+        Route::get('/cargo-tracking', CargoTrackingMapController::class)->name('cargo-map');
+        Route::get('/cargo-tracking/{cargo}/location', [CargoTrackingMapController::class, 'location'])->name('cargo-map.location');
+    });
+
     Route::middleware('role:store_keeper')->group(function () {
         Route::post('/cargo', [CargoController::class, 'store'])->name('cargo.store');
         Route::post('/cargo/{cargo}/confirm-handover', [CargoController::class, 'confirmHandover'])->name('cargo.confirm-handover');
@@ -51,6 +59,9 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     Route::middleware('role:transporter')->group(function () {
         Route::post('/cargo/{cargo}/sign', [CargoController::class, 'sign'])->name('cargo.sign');
+        Route::post('/cargo/{cargo}/live-location', [CargoController::class, 'liveLocation'])->name('cargo.live-location');
+        Route::post('/cargo/{cargo}/mark-arrived', [CargoController::class, 'markArrived'])->name('cargo.mark-arrived');
+        Route::post('/cargo/{cargo}/mark-delivered', [CargoController::class, 'markDelivered'])->name('cargo.mark-delivered');
     });
 
     // User Management (admin)
