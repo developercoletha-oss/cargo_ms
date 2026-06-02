@@ -9,7 +9,6 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -47,14 +46,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Logout::class, function (Logout $event): void {
             app(AuditTrailService::class)->logAuthEvent('logout', $event->user, [
                 'guard' => $event->guard,
-            ]);
-        });
-
-        Event::listen(Registered::class, function (Registered $event): void {
-            $user = $event->user;
-
-            app(AuditTrailService::class)->logAuthEvent('registered', $user, [
-                'registered_user_email' => $user->email ?? null,
             ]);
         });
 

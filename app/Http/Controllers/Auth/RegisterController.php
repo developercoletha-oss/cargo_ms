@@ -36,7 +36,7 @@ class RegisterController extends Controller
             'password' => ['required', 'string', 'confirmed', 'min:8'],
         ]);
 
-        User::create([
+        $user = User::create([
             'full_name' => $credentials['full_name'],
             'name' => Str::of($credentials['full_name'])->trim()->replace(' ', '.')->lower()->toString(),
             'email' => $credentials['email'],
@@ -51,7 +51,7 @@ class RegisterController extends Controller
         ]);
 
         return redirect()->route('login')
-            ->with('status', 'Registration submitted successfully. Please wait for admin approval. You will receive an email once your account is activated.');
+            ->with('status', 'Registration successful. Your account is pending admin approval.');
     }
 
 }

@@ -30,7 +30,6 @@ class AdminSeeder extends Seeder
                 'name' => 'System Administrator',
                 'full_name' => 'CFTMS Admin User',
                 'password' => Hash::make($password),
-                'email_verified_at' => now(),
                 'role' => 'admin',
                 'country' => 'TZ',
                 'timezone' => 'Africa/Dar_es_Salaam',

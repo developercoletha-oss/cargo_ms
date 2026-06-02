@@ -23,7 +23,7 @@
                             <ul>
                                 <li>Fill in your personal & company details.</li>
                                 <li>Choose a secure password.</li>
-                                <li>Account activates after admin approval.</li>
+                                <li>Wait for admin approval to activate access.</li>
                             </ul>
                         </div>
                     </div>
@@ -39,7 +39,7 @@
                             </h2>
                         </div>
 
-                        <p class="auth-login-subtitle">Register as a customer. Your account will stay pending until admin approval.</p>
+                        <p class="auth-login-subtitle">Register as a customer. Your account will be reviewed and approved by an administrator.</p>
 
                         @include('auth.partials.feedback')
 

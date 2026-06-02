@@ -25,7 +25,7 @@
                         <ul>
                             <li>Enter the email address linked to your transport company account.</li>
                             <li>The system verifies the email exists in the authorized users list.</li>
-                            <li>If verified, a reset link is sent to secure your cargo management access.</li>
+                            <li>If an account exists, a reset link is sent to secure your cargo management access.</li>
                         </ul>
                     </div>
 

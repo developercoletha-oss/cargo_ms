@@ -16,7 +16,7 @@ Route::view('/home', 'home');
 Route::view('/about', 'about')->name('about');
 Route::get('/track', CargoTrackingController::class)->name('tracking.show');
 
-Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(function () {
+Route::middleware(['auth'])->prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('index');
     
     // Notifications

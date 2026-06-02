@@ -42,6 +42,7 @@ class Kernel extends HttpKernel
     protected $routeMiddleware = [
         'auth' => \App\Http\Middleware\Authenticate::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
     ];
 }

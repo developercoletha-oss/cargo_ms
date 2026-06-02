@@ -122,7 +122,7 @@
                         <h3 class="dashboard-panel__title">Latest Cargo</h3>
                     </div>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-geo-alt me-1"></i> Track Cargo
                         </a>
                         <a href="{{ route('dashboard.cargo.index') }}" class="btn btn-outline-secondary btn-sm">

@@ -33,7 +33,7 @@ class LoginController extends Controller
 
         if ($user && ! $user->is_active) {
             throw ValidationException::withMessages([
-                'email' => 'Your account is pending admin approval. Please check your email after approval.',
+                'email' => 'Your account is pending admin approval.',
             ]);
         }
 
@@ -46,6 +46,7 @@ class LoginController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
+
         $user?->forceFill([
             'last_login_at' => now(),
         ])->save();

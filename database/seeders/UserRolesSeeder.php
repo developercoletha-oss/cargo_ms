@@ -28,7 +28,6 @@ class UserRolesSeeder extends Seeder
                     'name' => $userData['name'],
                     'full_name' => $userData['full_name'],
                     'password' => Hash::make('password'),
-                    'email_verified_at' => now(),
                     'role' => $userData['role'],
                     'country' => 'TZ',
                     'timezone' => 'Africa/Dar_es_Salaam',

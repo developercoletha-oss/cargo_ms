@@ -24,7 +24,7 @@
 
         <div class="d-flex align-items-center gap-2">
             @if($userRole === 'customer')
-                <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-2">
+                <a href="{{ route('dashboard.cargo-map') }}" class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex align-items-center gap-2">
                     <i class="bi bi-geo-alt"></i>
                     <span>Track Cargo</span>
                 </a>

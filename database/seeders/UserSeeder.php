@@ -13,9 +13,6 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $countries = ['TZ'];
-        $roles = ['admin', 'hgadmin', 'manager', 'staff'];
-        
         // Add Admin User (TZ - Tanzania)
         User::updateOrCreate(
             ['email' => 'admin@coletha.test'],
@@ -23,7 +20,6 @@ class UserSeeder extends Seeder
                 'name' => 'Coletha Admin',
                 'full_name' => 'CFTMS System Administrator',
                 'password' => Hash::make('password'),
-                'email_verified_at' => now(),
                 'role' => 'admin',
                 'country' => 'TZ',
                 'timezone' => 'Africa/Dar_es_Salaam',
@@ -38,7 +34,6 @@ class UserSeeder extends Seeder
                 'name' => 'Operations Manager',
                 'full_name' => 'Transport Operations Manager',
                 'password' => Hash::make('password'),
-                'email_verified_at' => now(),
                 'role' => 'manager',
                 'country' => 'TZ',
                 'timezone' => 'Africa/Dar_es_Salaam',
@@ -46,7 +41,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // Add a few staff users for demo
+        // Add a few transporter users for demo
         $staffData = [
             ['email' => 'staff1@cargo.co.tz', 'name' => 'Tanzania Staff 1', 'country' => 'TZ'],
             ['email' => 'staff2@cargo.co.tz', 'name' => 'Tanzania Staff', 'country' => 'TZ'],
@@ -62,8 +57,7 @@ class UserSeeder extends Seeder
                     'name' => $data['name'],
                     'full_name' => "Transport Staff " . ($index + 1) . " - {$data['country']}",
                     'password' => Hash::make('password'),
-                    'email_verified_at' => now(),
-                    'role' => 'staff',
+                    'role' => 'transporter',
                     'country' => $data['country'],
                     'timezone' => $this->getTimezoneForCountry($data['country']),
                     'is_active' => true,
