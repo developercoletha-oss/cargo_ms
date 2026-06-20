@@ -83,15 +83,7 @@ class CargoController extends Controller
         $user = $request->user();
         $search = (string) $request->query('search', '');
 
-        User::query()
-            ->where('role', 'transporter')
-            ->get(['id'])
-            ->each(function (User $staffUser) {
-                TransportStaff::firstOrCreate(
-                    ['user_id' => $staffUser->id],
-                    ['staff_code' => 'TSF-' . str_pad((string) $staffUser->id, 4, '0', STR_PAD_LEFT)]
-                );
-            });
+        $this->ensureTransporterStaffRecords();
 
         $query = Cargo::query()
             ->with(['customer', 'detail', 'transportStaff.user'])
@@ -483,6 +475,40 @@ class CargoController extends Controller
         if (! $transportStaff || (int) $cargo->transport_staff_id !== (int) $transportStaff->id) {
             abort(403, 'You can only update cargo assigned to you.');
         }
+    }
+
+    private function ensureTransporterStaffRecords(): void
+    {
+        $transporterIds = User::query()
+            ->where('role', 'transporter')
+            ->pluck('id');
+
+        if ($transporterIds->isEmpty()) {
+            return;
+        }
+
+        $existingStaffUserIds = TransportStaff::query()
+            ->whereIn('user_id', $transporterIds)
+            ->pluck('user_id');
+
+        $timestamp = now();
+        $missingStaffRows = $transporterIds
+            ->diff($existingStaffUserIds)
+            ->map(fn (int $userId) => [
+                'user_id' => $userId,
+                'staff_code' => 'TSF-'.str_pad((string) $userId, 4, '0', STR_PAD_LEFT),
+                'is_active' => true,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ])
+            ->values()
+            ->all();
+
+        if ($missingStaffRows === []) {
+            return;
+        }
+
+        TransportStaff::query()->insertOrIgnore($missingStaffRows);
     }
 
     private function notifyCustomerTrackingNumber(Cargo $cargo): void

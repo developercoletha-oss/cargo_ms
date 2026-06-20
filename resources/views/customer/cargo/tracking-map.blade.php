@@ -1,37 +1,51 @@
 @extends('layouts.colethaDashboardLayout')
 
+@php
+    $isManagerMap = $mode === 'manager';
+    $isTransporterMap = $mode === 'transporter';
+    $panelTitle = match ($mode) {
+        'manager' => 'Map Items',
+        'transporter' => 'Assigned Cargo',
+        default => 'My Cargo',
+    };
+@endphp
+
 @section('content')
 <div class="container-fluid px-3 px-lg-4 py-3">
     <div class="cargo-map-workspace">
         <div class="cargo-map-main">
             <section class="card border-0 shadow-sm cargo-map-card">
                 <div class="card-body p-0">
-                    @if($selectedCargo && $mapPayload)
-                        <div class="p-3 border-bottom">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <div>
-                                    <div class="text-muted small">Tracking Number</div>
-                                    <h2 class="h5 fw-normal mb-0">{{ $selectedCargo->tracking_number }}</h2>
+                    @if($mapPayload)
+                        @if($isManagerMap)
+                            <div class="p-3 border-bottom cargo-map-toolbar">
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                    <div>
+                                        <div class="text-muted small">Operations Map</div>
+                                        <h2 class="h5 fw-normal mb-0">
+                                            <span id="managerCargoCount">{{ $mapPayload['stats']['cargoes'] ?? 0 }}</span> cargos,
+                                            <span id="managerStoreCount">{{ $mapPayload['stats']['stores'] ?? 0 }}</span> stores
+                                        </h2>
+                                    </div>
+                                    <div class="manager-search input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                        <input id="managerMapSearch" type="search" class="form-control" placeholder="Search cargo or store" autocomplete="off">
+                                    </div>
                                 </div>
-                                <span class="badge text-bg-{{ $selectedCargo->statusBadgeClass() }} fs-6">{{ $selectedCargo->statusLabel() }}</span>
+                                <div class="text-muted small mt-2">
+                                    Last refresh: <span id="managerLastRefreshed">{{ $mapPayload['stats']['lastRefreshedAt'] ?? '-' }}</span>
+                                </div>
                             </div>
-                            <div class="row g-2 mt-3 small">
-                                <div class="col-md-6">From: {{ $selectedCargo->origin_city }}</div>
-                                <div class="col-md-6">To: {{ $selectedCargo->destination_city }}</div>
-                                <div class="col-md-6">Cargo: {{ $selectedCargo->detail?->description ?: '-' }}</div>
-                                <div class="col-md-6">Transporter: {{ $selectedCargo->transportStaff?->user?->full_name ?: $selectedCargo->transportStaff?->user?->name ?: 'Not assigned yet' }}</div>
-                                <div class="col-md-6">Current Location: <span id="currentLocationLabel">{{ $mapPayload['currentLocationLabel'] }}</span></div>
-                                <div class="col-md-6">Last Update: <span id="currentLocationTime">{{ $mapPayload['currentLocationTime'] ?: '-' }}</span></div>
-                                <div class="col-md-6">Saved Movements: <span id="movementCount">{{ count($mapPayload['movementPoints']) }}</span></div>
+                        @endif
+
+                        @if($isTransporterMap)
+                            <div id="liveGpsStatus" class="alert alert-secondary py-2 px-3 m-3 mb-0 d-none">
+                                <i class="bi bi-broadcast-pin me-1"></i><span></span>
                             </div>
-                        </div>
+                        @endif
+
                         <div class="cargo-map-wrap">
                             <div id="cargoTrackingMap" class="cargo-tracking-map"></div>
-                        </div>
-                        <div class="p-3 border-top">
-                            <div class="text-muted small">
-                                Green dotted line shows saved movement points reported during transport.
-                            </div>
                         </div>
                     @else
                         <div class="text-center text-muted py-5">
@@ -48,34 +62,44 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
-                            <h2 class="h5 fw-normal mb-1">My Cargo</h2>
-                            <p class="text-muted small mb-0">Select cargo to view movement on map.</p>
+                            <h2 class="h5 fw-normal mb-1">{{ $panelTitle }}</h2>
+                            @if($isManagerMap)
+                                <p class="text-muted small mb-0"><span id="managerResultCount">0</span> visible</p>
+                            @else
+                                <p class="text-muted small mb-0">{{ $cargoes->count() }} total</p>
+                            @endif
                         </div>
-                        <span class="badge text-bg-light border text-secondary">{{ $cargoes->count() }}</span>
+                        <span class="badge text-bg-light border text-secondary">
+                            {{ $isManagerMap ? (($mapPayload['stats']['cargoes'] ?? 0) + ($mapPayload['stats']['stores'] ?? 0)) : $cargoes->count() }}
+                        </span>
                     </div>
 
-                    <div class="list-group list-group-flush cargo-list-scroll">
-                        @forelse($cargoes as $cargo)
-                            @php
-                                $isSelected = $selectedCargo && (int) $selectedCargo->id === (int) $cargo->id;
-                            @endphp
-                            <a href="{{ route('dashboard.cargo-map', ['cargo_id' => $cargo->id]) }}"
-                                class="list-group-item list-group-item-action px-0 cargo-list-item {{ $isSelected ? 'is-selected rounded px-3' : '' }}">
-                                <div class="d-flex justify-content-between gap-2">
-                                    <span>{{ $cargo->tracking_number }}</span>
-                                    <span class="badge text-bg-{{ $cargo->statusBadgeClass() }}">{{ $cargo->statusLabel() }}</span>
+                    @if($isManagerMap)
+                        <div id="managerEntityList" class="cargo-list-scroll"></div>
+                    @else
+                        <div class="list-group list-group-flush cargo-list-scroll">
+                            @forelse($cargoes as $cargo)
+                                @php
+                                    $isSelected = $selectedCargo && (int) $selectedCargo->id === (int) $cargo->id;
+                                @endphp
+                                <a href="{{ route('dashboard.cargo-map', ['cargo_id' => $cargo->id]) }}"
+                                    class="list-group-item list-group-item-action px-0 cargo-list-item {{ $isSelected ? 'is-selected rounded px-3' : '' }}">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <span>{{ $cargo->tracking_number }}</span>
+                                        <span class="badge text-bg-{{ $cargo->statusBadgeClass() }}">{{ $cargo->statusLabel() }}</span>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        {{ $cargo->origin_city }} to {{ $cargo->destination_city }}
+                                    </div>
+                                </a>
+                            @empty
+                                <div class="text-center text-muted py-5">
+                                    <i class="bi bi-box-seam fs-3 d-block mb-2"></i>
+                                    No registered cargo yet.
                                 </div>
-                                <div class="text-muted small mt-1">
-                                    {{ $cargo->origin_city }} to {{ $cargo->destination_city }}
-                                </div>
-                            </a>
-                        @empty
-                            <div class="text-center text-muted py-5">
-                                <i class="bi bi-box-seam fs-3 d-block mb-2"></i>
-                                No registered cargo yet.
-                            </div>
-                        @endforelse
-                    </div>
+                            @endforelse
+                        </div>
+                    @endif
                 </div>
             </section>
         </aside>
@@ -87,17 +111,24 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
     .cargo-map-workspace {
-        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+        gap: 1rem;
+        align-items: stretch;
         max-width: 1500px;
         margin: 0 auto;
     }
 
     .cargo-map-main {
-        width: 100%;
+        min-width: 0;
     }
 
     .cargo-map-card {
         overflow: hidden;
+    }
+
+    .cargo-map-toolbar {
+        min-height: 96px;
     }
 
     .cargo-tracking-map {
@@ -107,12 +138,7 @@
     }
 
     .cargo-list-dock {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: min(340px, calc(100% - 2rem));
-        padding: 1rem;
+        min-width: 0;
         z-index: 500;
     }
 
@@ -154,30 +180,87 @@
         background: #f8fafc;
     }
 
-    .cargo-current-marker {
-        width: 18px;
-        height: 18px;
-        border-radius: 999px;
-        background: #2563eb;
-        border: 3px solid #ffffff;
-        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.18);
+    .manager-search {
+        width: min(380px, 100%);
+    }
+
+    .tracking-marker {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        border: 2px solid #ffffff;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+    }
+
+    .tracking-marker i {
+        font-size: 1.05rem;
+        line-height: 1;
+    }
+
+    .tracking-marker--pickup {
+        background: #0f766e;
+    }
+
+    .tracking-marker--destination {
+        background: #7c3aed;
+    }
+
+    .tracking-marker--cargo {
+        background: #b45309;
+    }
+
+    .tracking-entity-row {
+        border: 0;
+        border-bottom: 1px solid #e2e8f0;
+        border-radius: 0;
+        text-align: left;
+    }
+
+    .tracking-entity-row:hover,
+    .tracking-entity-row:focus {
+        background: #f8fafc;
+    }
+
+    .tracking-popup {
+        min-width: 250px;
+        max-width: 340px;
+    }
+
+    .tracking-popup-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.35rem;
+    }
+
+    .tracking-popup-grid {
+        display: grid;
+        gap: 0.25rem;
+        font-size: 0.82rem;
+    }
+
+    .tracking-popup-cargo-list {
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid #e2e8f0;
     }
 
     @media (max-width: 991.98px) {
         .cargo-map-workspace {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            grid-template-columns: 1fr;
         }
 
         .cargo-list-dock {
-            position: static;
             width: 100%;
             order: 2;
         }
 
         .cargo-list-scroll {
-            max-height: 280px;
+            max-height: 320px;
         }
 
         .cargo-tracking-map {
@@ -189,11 +272,18 @@
 @endpush
 
 @push('scripts')
-@if($selectedCargo && $mapPayload)
+@if($mapPayload)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const payload = @json($mapPayload);
+    const mode = @json($mode);
+    const overviewUrl = @json($overviewUrl);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    let payload = @json($mapPayload);
+    let latestMarkers = new Map();
+    let firstFit = true;
+    let gpsRequestActive = false;
+
     const map = L.map('cargoTrackingMap', {
         scrollWheelZoom: true,
     });
@@ -203,64 +293,239 @@ document.addEventListener('DOMContentLoaded', () => {
         attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
-    const route = L.polyline(payload.route, {
-        color: '#2563eb',
-        weight: 5,
-        opacity: 0.78,
-    }).addTo(map);
+    const escapeHtml = (value) => {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
+    };
 
-    const movementTrail = L.polyline(payload.movementTrail || [], {
-        color: '#16a34a',
-        weight: 4,
-        opacity: 0.85,
-        dashArray: '8 8',
-    }).addTo(map);
+    const hasPosition = (marker) => Array.isArray(marker.position)
+        && marker.position.length === 2
+        && Number.isFinite(Number(marker.position[0]))
+        && Number.isFinite(Number(marker.position[1]));
 
-    L.marker(payload.origin).addTo(map)
-        .bindPopup(`Origin<br>${payload.originLabel}`);
-
-    L.marker(payload.destination).addTo(map)
-        .bindPopup(`Destination<br>${payload.destinationLabel}`);
-
-    const currentIcon = L.divIcon({
+    const markerIcon = (marker) => L.divIcon({
         className: '',
-        html: '<div class="cargo-current-marker"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
+        html: `<div class="tracking-marker tracking-marker--${escapeHtml(marker.variant || 'cargo')}"><i class="bi ${escapeHtml(marker.iconClass || 'bi-geo-alt')}"></i></div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -18],
     });
 
-    const currentMarker = L.marker(payload.current, { icon: currentIcon }).addTo(map)
-        .bindPopup(`${payload.currentLocationLabel}<br>${payload.trackingNumber}<br>Status: ${payload.status}<br>Updated: ${payload.currentLocationTime || '-'}`)
-        .openPopup();
+    const cargoPopup = (cargo) => `
+        <div class="tracking-popup">
+            <div class="tracking-popup-title">${escapeHtml(cargo.trackingNumber)}</div>
+            <div class="mb-2"><span class="badge text-bg-${escapeHtml(cargo.statusClass)}">${escapeHtml(cargo.status)}</span></div>
+            <div class="tracking-popup-grid">
+                <div><strong>Cargo:</strong> ${escapeHtml(cargo.description)}</div>
+                <div><strong>Customer:</strong> ${escapeHtml(cargo.customerName || '-')}</div>
+                <div><strong>Transporter:</strong> ${escapeHtml(cargo.transporterName || '-')}</div>
+                <div><strong>Pickup:</strong> ${escapeHtml(cargo.originCity)} / ${escapeHtml(cargo.originAddress)}</div>
+                <div><strong>Destination:</strong> ${escapeHtml(cargo.destinationCity)} / ${escapeHtml(cargo.destinationAddress)}</div>
+                <div><strong>Current:</strong> ${escapeHtml(cargo.currentLocationLabel)}</div>
+                <div><strong>Coordinates:</strong> ${escapeHtml(cargo.currentLatitude)}, ${escapeHtml(cargo.currentLongitude)}</div>
+                <div><strong>Updated:</strong> ${escapeHtml(cargo.currentLocationTime)}</div>
+                <div><strong>Weight:</strong> ${escapeHtml(cargo.weightKg)} kg</div>
+                <div><strong>Quantity:</strong> ${escapeHtml(cargo.quantity)}</div>
+                <div><strong>Packages:</strong> ${escapeHtml(cargo.packageCount)}</div>
+                <div><strong>Pickup Date:</strong> ${escapeHtml(cargo.pickupDate)}</div>
+                <div><strong>Delivery Date:</strong> ${escapeHtml(cargo.deliveryDate)}</div>
+                <div><strong>Movements:</strong> ${escapeHtml(cargo.movementCount)}</div>
+            </div>
+        </div>
+    `;
 
-    map.fitBounds(route.getBounds(), {
-        padding: [40, 40],
-        maxZoom: 8,
-    });
+    const storePopup = (marker) => {
+        const cargoes = marker.cargoes || [];
+        const cargoRows = cargoes.map((cargo) => `
+            <div class="py-1">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <strong>${escapeHtml(cargo.trackingNumber)}</strong>
+                    <span class="badge text-bg-${escapeHtml(cargo.statusClass)}">${escapeHtml(cargo.status)}</span>
+                </div>
+                <div class="text-muted">${escapeHtml(cargo.description)}</div>
+                <div>${escapeHtml(cargo.route)}</div>
+                <div class="text-muted">${escapeHtml(cargo.customerName || '-')}</div>
+            </div>
+        `).join('');
 
-    window.setTimeout(() => {
-        map.invalidateSize();
-        map.fitBounds(route.getBounds(), {
-            padding: [40, 40],
-            maxZoom: 8,
+        return `
+            <div class="tracking-popup">
+                <div class="tracking-popup-title">${escapeHtml(marker.storeType || 'Store')}</div>
+                <div class="tracking-popup-grid">
+                    <div><strong>Location:</strong> ${escapeHtml(marker.title)}</div>
+                    <div><strong>Address:</strong> ${escapeHtml(marker.subtitle || '-')}</div>
+                    <div><strong>Cargo Count:</strong> ${escapeHtml(marker.cargoCount || 0)}</div>
+                </div>
+                <div class="tracking-popup-cargo-list">${cargoRows || '<div class="text-muted">No cargo linked.</div>'}</div>
+            </div>
+        `;
+    };
+
+    const popupContent = (marker) => marker.entityType === 'store'
+        ? storePopup(marker)
+        : cargoPopup(marker.cargo);
+
+    const fitVisibleMarkers = (markers) => {
+        const points = markers.filter(hasPosition).map((marker) => marker.position);
+
+        if (points.length === 0) {
+            map.setView([-6.3690, 34.8888], 6);
+            return;
+        }
+
+        if (points.length === 1) {
+            map.setView(points[0], 9);
+            return;
+        }
+
+        map.fitBounds(L.latLngBounds(points), {
+            padding: [44, 44],
+            maxZoom: 9,
         });
-    }, 150);
+    };
 
-    const locationLabel = document.getElementById('currentLocationLabel');
-    const locationTime = document.getElementById('currentLocationTime');
-    const movementCount = document.getElementById('movementCount');
+    const markerMatchesFilter = (marker) => {
+        if (mode !== 'manager') return true;
 
-    const renderMovementTrail = (latest) => {
-        movementTrail.setLatLngs(latest.movementTrail || []);
+        const search = document.getElementById('managerMapSearch')?.value.trim().toLowerCase() || '';
+        if (search === '') return true;
 
-        if (movementCount) {
-            movementCount.textContent = (latest.movementPoints || []).length;
+        return String(marker.searchText || '').toLowerCase().includes(search);
+    };
+
+    const visiblePayloadMarkers = () => (payload.markers || [])
+        .filter(hasPosition)
+        .filter(markerMatchesFilter);
+
+    const renderManagerList = (markers) => {
+        const list = document.getElementById('managerEntityList');
+        const resultCount = document.getElementById('managerResultCount');
+
+        if (resultCount) resultCount.textContent = markers.length;
+        if (!list) return;
+
+        if (markers.length === 0) {
+            list.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-search fs-3 d-block mb-2"></i>
+                    No matching cargo or store.
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = markers.slice(0, 200).map((marker) => {
+            const isStore = marker.entityType === 'store';
+            const title = isStore ? `${marker.storeType}: ${marker.title}` : marker.cargo.trackingNumber;
+            const subtitle = isStore
+                ? `${marker.cargoCount || 0} cargo item(s)`
+                : `${marker.cargo.status} / ${marker.cargo.currentLocationLabel}`;
+            const icon = isStore ? 'bi-shop' : 'bi-box-seam';
+
+            return `
+                <button type="button" class="list-group-item list-group-item-action tracking-entity-row px-0 py-3" data-marker-key="${escapeHtml(marker.key)}">
+                    <div class="d-flex align-items-start gap-2">
+                        <span class="badge text-bg-light border text-secondary"><i class="bi ${icon}"></i></span>
+                        <span class="d-block">
+                            <span class="d-block fw-semibold">${escapeHtml(title)}</span>
+                            <span class="d-block text-muted small">${escapeHtml(subtitle)}</span>
+                        </span>
+                    </div>
+                </button>
+            `;
+        }).join('');
+
+        list.querySelectorAll('[data-marker-key]').forEach((row) => {
+            row.addEventListener('click', () => {
+                const marker = latestMarkers.get(row.dataset.markerKey);
+                if (!marker) return;
+
+                map.panTo(marker.getLatLng());
+                marker.openPopup();
+            });
+        });
+    };
+
+    const renderMarkers = (fitMap = false) => {
+        const visibleMarkers = visiblePayloadMarkers();
+        const nextKeys = new Set();
+
+        visibleMarkers.forEach((markerData) => {
+            nextKeys.add(markerData.key);
+
+            if (latestMarkers.has(markerData.key)) {
+                const marker = latestMarkers.get(markerData.key);
+                marker.setLatLng(markerData.position);
+                marker.setIcon(markerIcon(markerData));
+                marker.setPopupContent(popupContent(markerData));
+                return;
+            }
+
+            const marker = L.marker(markerData.position, {
+                icon: markerIcon(markerData),
+                title: markerData.title || '',
+            }).addTo(map);
+
+            marker.bindPopup(popupContent(markerData));
+            latestMarkers.set(markerData.key, marker);
+        });
+
+        latestMarkers.forEach((marker, key) => {
+            if (nextKeys.has(key)) return;
+            map.removeLayer(marker);
+            latestMarkers.delete(key);
+        });
+
+        if (mode === 'manager') {
+            renderManagerList(visibleMarkers);
+        }
+
+        if (fitMap || firstFit) {
+            fitVisibleMarkers(visibleMarkers);
+            firstFit = false;
         }
     };
 
-    renderMovementTrail(payload);
+    const updateDetailHeader = () => {
+        if (!payload.cargo) return;
 
-    const refreshLiveLocation = async () => {
+        const cargo = payload.cargo;
+        const setText = (id, value) => {
+            const node = document.getElementById(id);
+            if (node) node.textContent = value ?? '-';
+        };
+
+        setText('detailTrackingNumber', cargo.trackingNumber);
+        setText('detailOrigin', cargo.originCity);
+        setText('detailDestination', cargo.destinationCity);
+        setText('detailCargoDescription', cargo.description);
+        setText('detailTransporter', cargo.transporterName);
+        setText('currentLocationLabel', payload.currentLocationLabel || cargo.currentLocationLabel);
+        setText('currentLocationTime', payload.currentLocationTime || cargo.currentLocationTime || '-');
+        setText('movementCount', payload.movementCount ?? cargo.movementCount ?? 0);
+
+        const badge = document.getElementById('detailStatusBadge');
+        if (badge) {
+            badge.className = `badge text-bg-${payload.statusClass || cargo.statusClass} fs-6`;
+            badge.textContent = payload.status || cargo.status;
+        }
+    };
+
+    const updateManagerStats = () => {
+        if (mode !== 'manager' || !payload.stats) return;
+
+        const setText = (id, value) => {
+            const node = document.getElementById(id);
+            if (node) node.textContent = value ?? '-';
+        };
+
+        setText('managerCargoCount', payload.stats.cargoes);
+        setText('managerStoreCount', payload.stats.stores);
+        setText('managerLastRefreshed', payload.stats.lastRefreshedAt);
+    };
+
+    const refreshDetail = async () => {
         if (!payload.locationUrl) return;
 
         const response = await fetch(payload.locationUrl, {
@@ -274,18 +539,123 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!response.ok) return;
 
-        const latest = await response.json();
-        currentMarker.setLatLng(latest.current);
-        currentMarker.setPopupContent(`${latest.currentLocationLabel}<br>${latest.trackingNumber}<br>Status: ${latest.status}<br>Updated: ${latest.currentLocationTime || '-'}`);
-        renderMovementTrail(latest);
-
-        if (locationLabel) locationLabel.textContent = latest.currentLocationLabel;
-        if (locationTime) locationTime.textContent = latest.currentLocationTime || '-';
+        payload = await response.json();
+        updateDetailHeader();
+        renderMarkers(false);
     };
 
-    window.setInterval(() => {
-        refreshLiveLocation().catch(() => {});
-    }, 10000);
+    const refreshOverview = async () => {
+        if (!overviewUrl) return;
+
+        const response = await fetch(overviewUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+
+        if (!response.ok) return;
+
+        payload = await response.json();
+        updateManagerStats();
+        renderMarkers(false);
+    };
+
+    const setLiveStatus = (message, tone = 'secondary') => {
+        const status = document.getElementById('liveGpsStatus');
+        if (!status) return;
+
+        status.className = `alert alert-${tone} py-2 px-3 m-3 mb-0`;
+        status.querySelector('span').textContent = message;
+    };
+
+    const sendTransporterLocation = () => {
+        if (mode !== 'transporter') return;
+
+        if (!payload.liveLocationUrl) {
+            setLiveStatus('Live GPS starts when the selected cargo is in transit.', 'secondary');
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            setLiveStatus('This browser does not support GPS location.', 'warning');
+            return;
+        }
+
+        if (gpsRequestActive) return;
+        gpsRequestActive = true;
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const response = await fetch(payload.liveLocationUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                        }),
+                    });
+
+                    if (response.ok) {
+                        setLiveStatus(`Live GPS sent at ${new Date().toLocaleTimeString()}`, 'success');
+                        await refreshDetail();
+                    } else {
+                        setLiveStatus('Live GPS could not be saved for this cargo.', 'warning');
+                    }
+                } catch (error) {
+                    setLiveStatus('Live GPS could not be sent right now.', 'warning');
+                } finally {
+                    gpsRequestActive = false;
+                }
+            },
+            () => {
+                gpsRequestActive = false;
+                setLiveStatus('Location permission is required for live GPS.', 'warning');
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 2000,
+                timeout: 10000,
+            }
+        );
+    };
+
+    renderMarkers(true);
+    updateDetailHeader();
+    updateManagerStats();
+
+    window.setTimeout(() => {
+        map.invalidateSize();
+        renderMarkers(true);
+    }, 150);
+
+    if (mode === 'manager') {
+        document.getElementById('managerMapSearch')?.addEventListener('input', () => {
+            renderMarkers(true);
+        });
+
+        window.setInterval(() => {
+            refreshOverview().catch(() => {});
+        }, 3000);
+    } else {
+        window.setInterval(() => {
+            refreshDetail().catch(() => {});
+        }, 3000);
+    }
+
+    if (mode === 'transporter') {
+        sendTransporterLocation();
+        window.setInterval(sendTransporterLocation, 3000);
+    }
 });
 </script>
 @endif

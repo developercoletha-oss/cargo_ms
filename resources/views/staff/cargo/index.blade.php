@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const sendLocation = async (position) => {
         const now = Date.now();
-        if (now - lastSentAt < 15000) return;
+        if (now - lastSentAt < 3000) return;
         lastSentAt = now;
 
         const payload = {
@@ -324,8 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             enableHighAccuracy: true,
-            maximumAge: 10000,
-            timeout: 20000,
+            maximumAge: 3000,
+            timeout: 10000,
         }
     );
 });

@@ -46,10 +46,10 @@
             </li>
             @endif
 
-            @if($userRole === 'customer')
+            @if(in_array($userRole, ['customer', 'manager', 'transporter', 'admin']))
             <li class="nav-item">
                 <a href="{{ route('dashboard.cargo-map') }}"
-                    class="nav-link {{ request()->routeIs('dashboard.cargo-map') ? 'active' : '' }}">
+                    class="nav-link {{ request()->routeIs('dashboard.cargo-map*') ? 'active' : '' }}">
                     <i class="bi bi-geo-alt"></i> Track Cargo
                 </a>
             </li>

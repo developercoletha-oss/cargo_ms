@@ -49,3 +49,26 @@
 - [ ] Add tests for geospatial workflows and validations
 - [ ] Add seed data for road segments, rules, and sample reports
 - [ ] Review performance for map queries and uploads
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+you as senior  developer i want you to implement this 
+reuse tracking page ya customer  for 
+1.manager and 2.transporter ambapo sasa
+kwa  customer hiyo line ya blue iondoe kabisa then  pawe panakuwa na icona 2 pickup store, destination store and   location ya cargo yake ,
+then kwa manager panatakiwa pawe na   all stores  and all cargos na manager aweze ku search any cargo or store (na aki click cargo or store aone full info for that)
+na kwa transporter ndo data zinapotokea ambapo na yeye anakuwa anaona pickup and destination na pia awe anaona loca;tion aliyopo  iala sasa after every 3 sec. sysytem iwe inatuma geospatiall data  coordinates za location aligyopo latilude and longitude , 
+
+NB:remove all N+1 problemt and implement indexing in database for better performance 
+  page ya customer and manager zinatakiwa ziwe zinakuwa updated after every 3 sec bu ajax  kwneye map stores ziwe na icon ya bootstrap store na cargo ziwe na icon a ya bootstrap ya cargo na chochote kikiwa clicked kionyeshe full info   performance is  very very important , use thet open leaf/ street map then after all debug and test if is work well. 

@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cargo;
+use App\Models\TransportStaff;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class CargoTrackingMapController extends Controller
@@ -43,72 +46,347 @@ class CargoTrackingMapController extends Controller
 
     public function __invoke(Request $request): View
     {
-        $user = $request->user();
-
-        if ($user->role !== 'customer') {
-            abort(403, 'Only customers can open cargo map tracking.');
-        }
-
-        $cargoes = Cargo::query()
-            ->with(['detail', 'transportStaff.user', 'locationUpdates'])
-            ->where('customer_id', $user->id)
-            ->latest()
-            ->get();
-
-        $selectedCargo = $cargoes->firstWhere('id', (int) $request->query('cargo_id'))
-            ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status !== Cargo::STATUS_DELIVERED)
-            ?? $cargoes->first();
+        $mode = $this->trackingMode($request);
+        $cargoes = $this->visibleCargoQuery($request)->latest()->get();
+        $selectedCargo = $mode === 'manager'
+            ? null
+            : $this->selectedCargo($cargoes, (int) $request->query('cargo_id'), $mode);
 
         return view('customer.cargo.tracking-map', [
+            'mode' => $mode,
             'cargoes' => $cargoes,
             'selectedCargo' => $selectedCargo,
-            'mapPayload' => $selectedCargo ? $this->mapPayload($selectedCargo) : null,
+            'mapPayload' => $mode === 'manager'
+                ? $this->managerPayload($cargoes)
+                : ($selectedCargo ? $this->cargoPayload($request, $selectedCargo) : null),
+            'overviewUrl' => $mode === 'manager' ? route('dashboard.cargo-map.overview') : null,
         ]);
+    }
+
+    public function overview(Request $request): JsonResponse
+    {
+        if ($this->trackingMode($request) !== 'manager') {
+            abort(403, 'Only managers can open the cargo overview map.');
+        }
+
+        return response()->json(
+            $this->managerPayload($this->visibleCargoQuery($request)->latest()->get())
+        );
     }
 
     public function location(Request $request, Cargo $cargo): JsonResponse
     {
-        if ($request->user()->role !== 'customer' || (int) $cargo->customer_id !== (int) $request->user()->id) {
-            abort(403, 'You can only track your own cargo.');
-        }
+        $cargo = $this->visibleCargoQuery($request)
+            ->whereKey($cargo->id)
+            ->firstOrFail();
 
-        return response()->json($this->mapPayload($cargo));
+        return response()->json($this->cargoPayload($request, $cargo));
     }
 
-    private function mapPayload(Cargo $cargo): array
+    private function visibleCargoQuery(Request $request): Builder
     {
-        $origin = self::AREA_COORDINATES[$cargo->origin_city] ?? [-6.3690, 34.8888];
-        $destination = self::AREA_COORDINATES[$cargo->destination_city] ?? [-6.3690, 34.8888];
-        $current = $this->currentCoordinates($cargo, $origin, $destination);
-        $movementPoints = $cargo->locationUpdates()
-            ->orderBy('recorded_at')
-            ->get()
-            ->map(fn ($update) => [
-                'locationName' => $update->location_name ?: 'Live GPS location',
-                'latitude' => (float) $update->latitude,
-                'longitude' => (float) $update->longitude,
-                'point' => [(float) $update->latitude, (float) $update->longitude],
-                'source' => $update->source,
-                'recordedAt' => optional($update->recorded_at)->format('d M Y H:i'),
+        $user = $request->user();
+        $mode = $this->trackingMode($request);
+
+        $query = Cargo::query()
+            ->select([
+                'id',
+                'tracking_number',
+                'customer_id',
+                'transport_staff_id',
+                'origin_country',
+                'origin_city',
+                'origin_address',
+                'destination_country',
+                'destination_city',
+                'destination_address',
+                'current_location_city',
+                'current_location_lat',
+                'current_location_lng',
+                'current_location_updated_at',
+                'pickup_date',
+                'delivery_date',
+                'status',
+                'approval_note',
+                'signed_at',
+                'handover_confirmed_at',
+                'created_at',
+                'updated_at',
             ])
-            ->values();
+            ->with([
+                'customer:id,name,full_name,email,phone,company_name',
+                'detail:id,cargo_id,description,cargo_type,weight_kg,volume_cbm,quantity,package_count,estimated_value,is_fragile,is_hazardous,special_instructions',
+                'transportStaff:id,user_id,staff_code,vehicle_type,vehicle_plate,is_active',
+                'transportStaff.user:id,name,full_name,email,phone',
+            ])
+            ->withCount('locationUpdates');
+
+        if ($mode === 'customer') {
+            $query->where('customer_id', $user->id);
+        }
+
+        if ($mode === 'transporter') {
+            $transportStaffId = TransportStaff::query()
+                ->where('user_id', $user->id)
+                ->value('id');
+
+            $query->where('transport_staff_id', $transportStaffId ?: 0);
+        }
+
+        return $query;
+    }
+
+    private function trackingMode(Request $request): string
+    {
+        return match ($request->user()?->role) {
+            'admin', 'manager' => 'manager',
+            'transporter' => 'transporter',
+            default => 'customer',
+        };
+    }
+
+    private function selectedCargo(Collection $cargoes, int $cargoId, string $mode): ?Cargo
+    {
+        if ($cargoId > 0) {
+            $selected = $cargoes->firstWhere('id', $cargoId);
+
+            if ($selected) {
+                return $selected;
+            }
+        }
+
+        if ($mode === 'transporter') {
+            return $cargoes->first(fn (Cargo $cargo) => $cargo->status === Cargo::STATUS_IN_TRANSIT)
+                ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status === Cargo::STATUS_APPROVED)
+                ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status !== Cargo::STATUS_DELIVERED)
+                ?? $cargoes->first();
+        }
+
+        return $cargoes->first(fn (Cargo $cargo) => $cargo->status !== Cargo::STATUS_DELIVERED)
+            ?? $cargoes->first();
+    }
+
+    private function managerPayload(Collection $cargoes): array
+    {
+        $storeMarkers = [];
+        $cargoMarkers = [];
+
+        foreach ($cargoes as $cargo) {
+            $origin = $this->areaCoordinates($cargo->origin_city);
+            $destination = $this->areaCoordinates($cargo->destination_city);
+            $current = $this->currentCoordinates($cargo, $origin, $destination);
+            $cargoInfo = $this->cargoInfo($cargo, $current);
+
+            $this->appendStoreMarker($storeMarkers, $cargo, 'pickup', 'Pickup Store', $origin);
+            $this->appendStoreMarker($storeMarkers, $cargo, 'destination', 'Destination Store', $destination);
+
+            $cargoMarkers[] = [
+                'key' => "cargo:{$cargo->id}",
+                'entityType' => 'cargo',
+                'variant' => 'cargo',
+                'iconClass' => 'bi-box-seam',
+                'title' => $cargo->tracking_number,
+                'subtitle' => $this->currentLocationLabel($cargo),
+                'position' => $current,
+                'cargo' => $cargoInfo,
+                'searchText' => $this->searchText([
+                    $cargo->tracking_number,
+                    $cargoInfo['description'],
+                    $cargoInfo['cargoType'],
+                    $cargoInfo['customerName'],
+                    $cargoInfo['transporterName'],
+                    $cargo->origin_city,
+                    $cargo->origin_address,
+                    $cargo->destination_city,
+                    $cargo->destination_address,
+                    $cargo->current_location_city,
+                    $cargo->statusLabel(),
+                ]),
+            ];
+        }
 
         return [
+            'mode' => 'manager',
+            'stats' => [
+                'cargoes' => $cargoes->count(),
+                'stores' => count($storeMarkers),
+                'lastRefreshedAt' => now()->format('d M Y H:i:s'),
+            ],
+            'markers' => [
+                ...array_values($storeMarkers),
+                ...$cargoMarkers,
+            ],
+        ];
+    }
+
+    private function cargoPayload(Request $request, Cargo $cargo): array
+    {
+        $origin = $this->areaCoordinates($cargo->origin_city);
+        $destination = $this->areaCoordinates($cargo->destination_city);
+        $current = $this->currentCoordinates($cargo, $origin, $destination);
+        $cargoInfo = $this->cargoInfo($cargo, $current);
+        $liveLocationUrl = $this->canSendLiveLocation($request, $cargo)
+            ? route('dashboard.cargo.live-location', $cargo)
+            : null;
+
+        return [
+            'mode' => $this->trackingMode($request),
             'cargoId' => $cargo->id,
             'trackingNumber' => $cargo->tracking_number,
             'status' => $cargo->statusLabel(),
-            'currentLocationLabel' => $this->currentLocationLabel($cargo),
-            'currentLocationTime' => optional($cargo->current_location_updated_at)->format('d M Y H:i'),
+            'statusClass' => $cargo->statusBadgeClass(),
+            'currentLocationLabel' => $cargoInfo['currentLocationLabel'],
+            'currentLocationTime' => $cargoInfo['currentLocationTime'],
+            'movementCount' => $cargoInfo['movementCount'],
             'locationUrl' => route('dashboard.cargo-map.location', $cargo),
-            'originLabel' => $cargo->origin_city,
-            'destinationLabel' => $cargo->destination_city,
-            'origin' => $origin,
-            'destination' => $destination,
-            'current' => $current,
-            'route' => [$origin, $destination],
-            'movementPoints' => $movementPoints,
-            'movementTrail' => $movementPoints->pluck('point')->values(),
+            'liveLocationUrl' => $liveLocationUrl,
+            'canSendLiveLocation' => $liveLocationUrl !== null,
+            'cargo' => $cargoInfo,
+            'markers' => [
+                [
+                    'key' => "pickup:{$cargo->id}",
+                    'entityType' => 'store',
+                    'variant' => 'pickup',
+                    'storeType' => 'Pickup Store',
+                    'iconClass' => 'bi-shop',
+                    'title' => $cargo->origin_city,
+                    'subtitle' => $cargo->origin_address ?: 'Pickup point',
+                    'position' => $origin,
+                    'cargoCount' => 1,
+                    'cargoes' => [$this->storeCargoSummary($cargo)],
+                    'searchText' => $this->searchText([$cargo->origin_city, $cargo->origin_address, 'pickup store']),
+                ],
+                [
+                    'key' => "destination:{$cargo->id}",
+                    'entityType' => 'store',
+                    'variant' => 'destination',
+                    'storeType' => 'Destination Store',
+                    'iconClass' => 'bi-shop',
+                    'title' => $cargo->destination_city,
+                    'subtitle' => $cargo->destination_address ?: 'Destination point',
+                    'position' => $destination,
+                    'cargoCount' => 1,
+                    'cargoes' => [$this->storeCargoSummary($cargo)],
+                    'searchText' => $this->searchText([$cargo->destination_city, $cargo->destination_address, 'destination store']),
+                ],
+                [
+                    'key' => "cargo:{$cargo->id}",
+                    'entityType' => 'cargo',
+                    'variant' => 'cargo',
+                    'iconClass' => 'bi-box-seam',
+                    'title' => $cargo->tracking_number,
+                    'subtitle' => $cargoInfo['currentLocationLabel'],
+                    'position' => $current,
+                    'cargo' => $cargoInfo,
+                    'searchText' => $this->searchText([
+                        $cargo->tracking_number,
+                        $cargoInfo['description'],
+                        $cargoInfo['currentLocationLabel'],
+                        $cargo->statusLabel(),
+                    ]),
+                ],
+            ],
         ];
+    }
+
+    private function appendStoreMarker(array &$storeMarkers, Cargo $cargo, string $variant, string $storeType, array $position): void
+    {
+        $city = $variant === 'pickup' ? $cargo->origin_city : $cargo->destination_city;
+        $address = $variant === 'pickup' ? $cargo->origin_address : $cargo->destination_address;
+        $country = $variant === 'pickup' ? $cargo->origin_country : $cargo->destination_country;
+        $key = 'store:'.md5($variant.'|'.strtolower((string) $city).'|'.strtolower((string) $address));
+
+        if (! isset($storeMarkers[$key])) {
+            $storeMarkers[$key] = [
+                'key' => $key,
+                'entityType' => 'store',
+                'variant' => $variant,
+                'storeType' => $storeType,
+                'iconClass' => 'bi-shop',
+                'title' => $city,
+                'subtitle' => $address ?: $country,
+                'position' => $position,
+                'cargoCount' => 0,
+                'cargoes' => [],
+                'searchText' => $this->searchText([$storeType, $city, $address, $country]),
+            ];
+        }
+
+        $storeMarkers[$key]['cargoCount']++;
+        $storeMarkers[$key]['cargoes'][] = $this->storeCargoSummary($cargo);
+        $storeMarkers[$key]['searchText'] .= ' '.$this->searchText([
+            $cargo->tracking_number,
+            $cargo->statusLabel(),
+            $cargo->detail?->description,
+            $this->displayName($cargo->customer),
+        ]);
+    }
+
+    private function storeCargoSummary(Cargo $cargo): array
+    {
+        return [
+            'id' => $cargo->id,
+            'trackingNumber' => $cargo->tracking_number,
+            'status' => $cargo->statusLabel(),
+            'statusClass' => $cargo->statusBadgeClass(),
+            'description' => $cargo->detail?->description ?: '-',
+            'customerName' => $this->displayName($cargo->customer),
+            'route' => "{$cargo->origin_city} to {$cargo->destination_city}",
+        ];
+    }
+
+    private function cargoInfo(Cargo $cargo, array $current): array
+    {
+        $detail = $cargo->detail;
+        $transportUser = $cargo->transportStaff?->user;
+
+        return [
+            'id' => $cargo->id,
+            'trackingNumber' => $cargo->tracking_number,
+            'status' => $cargo->statusLabel(),
+            'statusClass' => $cargo->statusBadgeClass(),
+            'description' => $detail?->description ?: '-',
+            'cargoType' => $detail?->cargo_type ?: '-',
+            'weightKg' => number_format((float) ($detail?->weight_kg ?? 0), 2),
+            'volumeCbm' => $detail?->volume_cbm !== null ? number_format((float) $detail->volume_cbm, 2) : '-',
+            'quantity' => $detail?->quantity ?? '-',
+            'packageCount' => $detail?->package_count ?? '-',
+            'estimatedValue' => $detail?->estimated_value !== null ? number_format((float) $detail->estimated_value, 2) : '-',
+            'isFragile' => (bool) ($detail?->is_fragile ?? false),
+            'isHazardous' => (bool) ($detail?->is_hazardous ?? false),
+            'specialInstructions' => $detail?->special_instructions ?: '-',
+            'customerName' => $this->displayName($cargo->customer),
+            'customerEmail' => $cargo->customer?->email ?: '-',
+            'customerPhone' => $cargo->customer?->phone ?: '-',
+            'transporterName' => $this->displayName($transportUser) ?: 'Not assigned yet',
+            'transporterPhone' => $transportUser?->phone ?: '-',
+            'staffCode' => $cargo->transportStaff?->staff_code ?: '-',
+            'vehicle' => trim(($cargo->transportStaff?->vehicle_type ?: '').' '.($cargo->transportStaff?->vehicle_plate ?: '')) ?: '-',
+            'originCountry' => strtoupper((string) $cargo->origin_country),
+            'originCity' => $cargo->origin_city,
+            'originAddress' => $cargo->origin_address ?: '-',
+            'destinationCountry' => strtoupper((string) $cargo->destination_country),
+            'destinationCity' => $cargo->destination_city,
+            'destinationAddress' => $cargo->destination_address ?: '-',
+            'pickupDate' => optional($cargo->pickup_date)->format('d M Y') ?: '-',
+            'deliveryDate' => optional($cargo->delivery_date)->format('d M Y') ?: '-',
+            'currentLocationLabel' => $this->currentLocationLabel($cargo),
+            'currentLocationTime' => optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-',
+            'currentLatitude' => number_format((float) $current[0], 7, '.', ''),
+            'currentLongitude' => number_format((float) $current[1], 7, '.', ''),
+            'movementCount' => (int) ($cargo->location_updates_count ?? 0),
+            'signedAt' => optional($cargo->signed_at)->format('d M Y H:i') ?: '-',
+            'handoverConfirmedAt' => optional($cargo->handover_confirmed_at)->format('d M Y H:i') ?: '-',
+            'approvalNote' => $cargo->approval_note ?: '-',
+        ];
+    }
+
+    private function canSendLiveLocation(Request $request, Cargo $cargo): bool
+    {
+        return $this->trackingMode($request) === 'transporter'
+            && $cargo->status === Cargo::STATUS_IN_TRANSIT
+            && $cargo->transportStaff
+            && (int) $cargo->transportStaff->user_id === (int) $request->user()->id;
     }
 
     private function statusProgress(string $status): float
@@ -129,7 +407,11 @@ class CargoTrackingMapController extends Controller
             return $cargo->current_location_city;
         }
 
-        if ($cargo->status === Cargo::STATUS_IN_TRANSIT && $cargo->current_location_lat && $cargo->current_location_lng) {
+        if (
+            $cargo->status === Cargo::STATUS_IN_TRANSIT
+            && $cargo->current_location_lat !== null
+            && $cargo->current_location_lng !== null
+        ) {
             return 'Live GPS location';
         }
 
@@ -143,7 +425,7 @@ class CargoTrackingMapController extends Controller
 
     private function currentCoordinates(Cargo $cargo, array $origin, array $destination): array
     {
-        if ($cargo->current_location_lat && $cargo->current_location_lng) {
+        if ($cargo->current_location_lat !== null && $cargo->current_location_lng !== null) {
             return [
                 (float) $cargo->current_location_lat,
                 (float) $cargo->current_location_lng,
@@ -156,5 +438,23 @@ class CargoTrackingMapController extends Controller
             $origin[0] + (($destination[0] - $origin[0]) * $progress),
             $origin[1] + (($destination[1] - $origin[1]) * $progress),
         ];
+    }
+
+    private function areaCoordinates(?string $city): array
+    {
+        return self::AREA_COORDINATES[$city] ?? [-6.3690, 34.8888];
+    }
+
+    private function displayName($user): string
+    {
+        return (string) ($user?->full_name ?: $user?->name ?: '');
+    }
+
+    private function searchText(array $values): string
+    {
+        return strtolower(implode(' ', array_filter(array_map(
+            fn ($value) => is_scalar($value) ? (string) $value : '',
+            $values
+        ))));
     }
 }

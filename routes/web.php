@@ -43,8 +43,9 @@ Route::middleware(['auth'])->prefix('dashboard')->name('dashboard.')->group(func
         Route::post('/cargo/{cargo}/disapprove', [CargoController::class, 'disapprove'])->name('cargo.disapprove');
     });
 
-    Route::middleware('role:customer')->group(function () {
+    Route::middleware('role:customer,manager,transporter')->group(function () {
         Route::get('/cargo-tracking', CargoTrackingMapController::class)->name('cargo-map');
+        Route::get('/cargo-tracking/overview-data', [CargoTrackingMapController::class, 'overview'])->name('cargo-map.overview');
         Route::get('/cargo-tracking/{cargo}/location', [CargoTrackingMapController::class, 'location'])->name('cargo-map.location');
     });
 
