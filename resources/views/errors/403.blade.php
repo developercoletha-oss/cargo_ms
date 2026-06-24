@@ -29,7 +29,7 @@
                 'variant' => 'primary',
             ],
             [
-                'href' => route('developer'),
+                'href' => \Illuminate\Support\Facades\Route::has('developer') ? route('developer') : route('home'),
                 'label' => 'Contact Developer',
                 'icon' => 'bi-code-slash',
                 'variant' => 'secondary',

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Observers\SensitiveActivityObserver;
 use App\Services\AuditTrailService;
+use App\Services\MailSettingService;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -34,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schema::defaultStringLength(191);
+
+        app(MailSettingService::class)->applyActiveSetting();
 
         User::observe(SensitiveActivityObserver::class);
 

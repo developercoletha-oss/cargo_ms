@@ -36,6 +36,10 @@
                 'title' => 'System Settings',
                 'subtitle' => 'Adjust your application behavior and personal settings.',
             ],
+            request()->is('dashboard/mail-settings*') => [
+                'title' => 'Mail Settings',
+                'subtitle' => 'Manage secure SMTP profiles used by password recovery and outgoing email.',
+            ],
             request()->is('dashboard/users*') => [
                 'title' => 'User Management',
                 'subtitle' => 'Create, review, update, and remove system users.',

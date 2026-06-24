@@ -7,6 +7,7 @@ use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\ShipmentController;
 use App\Http\Controllers\Dashboard\UserManagementController;
+use App\Http\Controllers\Dashboard\MailSettingController;
 use App\Http\Controllers\CargoTrackingController;
 use Illuminate\Support\Facades\Route;
 
@@ -67,6 +68,17 @@ Route::middleware(['auth'])->prefix('dashboard')->name('dashboard.')->group(func
 
     // User Management (admin)
     Route::middleware('role:admin')->group(function () {
+        Route::get('/mail-settings/content', [MailSettingController::class, 'content'])
+            ->name('mail_settings.content');
+        Route::post('/mail-settings/store', [MailSettingController::class, 'store'])
+            ->name('mail_settings.store');
+        Route::put('/mail-settings/{mailSetting}', [MailSettingController::class, 'update'])
+            ->name('mail_settings.update');
+        Route::delete('/mail-settings/{mailSetting}', [MailSettingController::class, 'destroy'])
+            ->name('mail_settings.destroy');
+        Route::patch('/mail-settings/{mailSetting}/activate', [MailSettingController::class, 'activate'])
+            ->name('mail_settings.activate');
+
         Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])->name('users.approve');
         Route::post('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
         Route::resource('users', UserManagementController::class)

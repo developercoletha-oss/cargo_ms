@@ -1,7 +1,7 @@
 @php
     $currentUser = Auth::user();
     $userRole = $currentUser?->role ?? 'customer';
-    $isAdministrationMenuOpen = request()->is('dashboard/profile*') || request()->is('dashboard/settings*') || request()->is('dashboard/users*');
+    $isAdministrationMenuOpen = request()->is('dashboard/profile*') || request()->is('dashboard/settings*') || request()->is('dashboard/users*') || request()->is('dashboard/mail-settings*');
     $isMonitoringMenuOpen = request()->is('dashboard/notifications*');
     $isShipmentsMenuOpen = request()->is('dashboard/shipments*');
 @endphp
@@ -80,6 +80,12 @@
                 </a>
                 <div class="collapse {{ $isAdministrationMenuOpen ? 'show' : '' }}" id="adminSubmenu">
                     <ul class="nav flex-column ms-3 mt-2">
+                        <li class="nav-item">
+                            <a href="{{ route('dashboard.mail_settings.content') }}"
+                                class="nav-link {{ request()->is('dashboard/mail-settings*') ? 'active' : '' }}">
+                                <i class="bi bi-envelope-gear"></i> Mail Settings
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a href="{{ route('dashboard.profile.show') }}"
                                 class="nav-link {{ request()->is('dashboard/profile*') ? 'active' : '' }}">

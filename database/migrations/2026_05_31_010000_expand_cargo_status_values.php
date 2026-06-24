@@ -10,7 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE cargo MODIFY status ENUM('pending', 'approved', 'disapproved', 'in_transit', 'arrived', 'delivered') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE cargo MODIFY status ENUM('pending', 'approved', 'disapproved', 'in_transit', 'arrived', 'delivered') NOT NULL DEFAULT 'pending'");
+        }
     }
 
     /**
@@ -18,6 +20,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE cargo MODIFY status ENUM('pending', 'approved', 'disapproved') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE cargo MODIFY status ENUM('pending', 'approved', 'disapproved') NOT NULL DEFAULT 'pending'");
+        }
     }
 };
