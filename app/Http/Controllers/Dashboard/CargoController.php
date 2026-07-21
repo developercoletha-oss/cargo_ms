@@ -342,6 +342,7 @@ class CargoController extends Controller
             'handover_confirmed_at' => now(),
         ]);
         $this->recordLocationUpdate($cargo, $user->id, $cargo->origin_city, (float) $cargo->current_location_lat, (float) $cargo->current_location_lng, 'handover');
+        $this->storeSampleRouteUpdates($cargo, $user->id);
 
         return redirect()->route('dashboard.cargo.index')->with('success', 'Warehouse handover confirmed. Cargo is now in transit.');
     }
@@ -352,7 +353,7 @@ class CargoController extends Controller
 
         if ($cargo->status !== Cargo::STATUS_IN_TRANSIT) {
             return response()->json([
-                'message' => 'Only cargo in transit can receive live GPS updates.',
+                'message' => 'Only cargo in transit can receive location updates.',
             ], 422);
         }
 
@@ -367,7 +368,7 @@ class CargoController extends Controller
             'current_location_lng' => $validated['longitude'],
             'current_location_updated_at' => now(),
         ]);
-        $this->recordLocationUpdate($cargo, $request->user()->id, null, (float) $validated['latitude'], (float) $validated['longitude'], 'gps');
+        $this->recordLocationUpdate($cargo, $request->user()->id, null, (float) $validated['latitude'], (float) $validated['longitude'], 'manual');
 
         return response()->json([
             'message' => 'Live location updated.',
@@ -553,5 +554,38 @@ class CargoController extends Controller
             'source' => $source,
             'recorded_at' => now(),
         ]);
+    }
+
+    private function storeSampleRouteUpdates(Cargo $cargo, ?int $reportedBy): void
+    {
+        if ($cargo->locationUpdates()->where('source', 'sample_route')->exists()) {
+            return;
+        }
+
+        $origin = self::AREA_COORDINATES[$cargo->origin_city] ?? null;
+        $destination = self::AREA_COORDINATES[$cargo->destination_city] ?? null;
+
+        if (! $origin || ! $destination) {
+            return;
+        }
+
+        $recordedAt = now();
+        $samplePoints = collect([0.18, 0.38, 0.58, 0.78])->map(function (float $progress, int $index) use ($origin, $destination, $cargo, $reportedBy, $recordedAt) {
+            $curve = sin($progress * pi()) * 0.18;
+
+            return [
+                'cargo_id' => $cargo->id,
+                'reported_by' => $reportedBy,
+                'location_name' => "Sample route point ".($index + 1),
+                'latitude' => $origin[0] + (($destination[0] - $origin[0]) * $progress) + $curve,
+                'longitude' => $origin[1] + (($destination[1] - $origin[1]) * $progress) - ($curve / 2),
+                'source' => 'sample_route',
+                'recorded_at' => $recordedAt->copy()->addMinutes($index + 1),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        })->all();
+
+        CargoLocationUpdate::insert($samplePoints);
     }
 }

@@ -116,6 +116,10 @@ class CargoTrackingMapController extends Controller
             ->with([
                 'customer:id,name,full_name,email,phone,company_name',
                 'detail:id,cargo_id,description,cargo_type,weight_kg,volume_cbm,quantity,package_count,estimated_value,is_fragile,is_hazardous,special_instructions',
+                'locationUpdates' => fn ($query) => $query
+                    ->select(['id', 'cargo_id', 'location_name', 'latitude', 'longitude', 'recorded_at'])
+                    ->orderBy('recorded_at')
+                    ->orderBy('id'),
                 'transportStaff:id,user_id,staff_code,vehicle_type,vehicle_plate,is_active',
                 'transportStaff.user:id,name,full_name,email,phone',
             ])
@@ -174,7 +178,8 @@ class CargoTrackingMapController extends Controller
         foreach ($cargoes as $cargo) {
             $origin = $this->areaCoordinates($cargo->origin_city);
             $destination = $this->areaCoordinates($cargo->destination_city);
-            $current = $this->currentCoordinates($cargo, $origin, $destination);
+            $routeCoordinates = $this->routeCoordinates($cargo, $origin, $destination);
+            $current = $this->currentCoordinates($cargo, $origin, $destination, $routeCoordinates);
             $cargoInfo = $this->cargoInfo($cargo, $current);
 
             $this->appendStoreMarker($storeMarkers, $cargo, 'pickup', 'Pickup Store', $origin);
@@ -188,6 +193,7 @@ class CargoTrackingMapController extends Controller
                 'title' => $cargo->tracking_number,
                 'subtitle' => $this->currentLocationLabel($cargo),
                 'position' => $current,
+                'routeCoordinates' => $routeCoordinates,
                 'cargo' => $cargoInfo,
                 'searchText' => $this->searchText([
                     $cargo->tracking_number,
@@ -223,11 +229,9 @@ class CargoTrackingMapController extends Controller
     {
         $origin = $this->areaCoordinates($cargo->origin_city);
         $destination = $this->areaCoordinates($cargo->destination_city);
-        $current = $this->currentCoordinates($cargo, $origin, $destination);
+        $routeCoordinates = $this->routeCoordinates($cargo, $origin, $destination);
+        $current = $this->currentCoordinates($cargo, $origin, $destination, $routeCoordinates);
         $cargoInfo = $this->cargoInfo($cargo, $current);
-        $liveLocationUrl = $this->canSendLiveLocation($request, $cargo)
-            ? route('dashboard.cargo.live-location', $cargo)
-            : null;
 
         return [
             'mode' => $this->trackingMode($request),
@@ -239,8 +243,8 @@ class CargoTrackingMapController extends Controller
             'currentLocationTime' => $cargoInfo['currentLocationTime'],
             'movementCount' => $cargoInfo['movementCount'],
             'locationUrl' => route('dashboard.cargo-map.location', $cargo),
-            'liveLocationUrl' => $liveLocationUrl,
-            'canSendLiveLocation' => $liveLocationUrl !== null,
+            'routeCoordinates' => $routeCoordinates,
+            'animationIntervalMs' => 900,
             'cargo' => $cargoInfo,
             'markers' => [
                 [
@@ -277,6 +281,7 @@ class CargoTrackingMapController extends Controller
                     'title' => $cargo->tracking_number,
                     'subtitle' => $cargoInfo['currentLocationLabel'],
                     'position' => $current,
+                    'routeCoordinates' => $routeCoordinates,
                     'cargo' => $cargoInfo,
                     'searchText' => $this->searchText([
                         $cargo->tracking_number,
@@ -381,14 +386,6 @@ class CargoTrackingMapController extends Controller
         ];
     }
 
-    private function canSendLiveLocation(Request $request, Cargo $cargo): bool
-    {
-        return $this->trackingMode($request) === 'transporter'
-            && $cargo->status === Cargo::STATUS_IN_TRANSIT
-            && $cargo->transportStaff
-            && (int) $cargo->transportStaff->user_id === (int) $request->user()->id;
-    }
-
     private function statusProgress(string $status): float
     {
         return match ($status) {
@@ -412,7 +409,7 @@ class CargoTrackingMapController extends Controller
             && $cargo->current_location_lat !== null
             && $cargo->current_location_lng !== null
         ) {
-            return 'Live GPS location';
+            return 'Stored route location';
         }
 
         return match ($cargo->status) {
@@ -423,13 +420,17 @@ class CargoTrackingMapController extends Controller
         };
     }
 
-    private function currentCoordinates(Cargo $cargo, array $origin, array $destination): array
+    private function currentCoordinates(Cargo $cargo, array $origin, array $destination, array $routeCoordinates = []): array
     {
         if ($cargo->current_location_lat !== null && $cargo->current_location_lng !== null) {
             return [
                 (float) $cargo->current_location_lat,
                 (float) $cargo->current_location_lng,
             ];
+        }
+
+        if ($routeCoordinates !== []) {
+            return $routeCoordinates[array_key_last($routeCoordinates)];
         }
 
         $progress = $this->statusProgress($cargo->status);
@@ -443,6 +444,33 @@ class CargoTrackingMapController extends Controller
     private function areaCoordinates(?string $city): array
     {
         return self::AREA_COORDINATES[$city] ?? [-6.3690, 34.8888];
+    }
+
+    private function routeCoordinates(Cargo $cargo, array $origin, array $destination): array
+    {
+        $storedCoordinates = $cargo->locationUpdates
+            ->map(fn ($update) => [
+                (float) $update->latitude,
+                (float) $update->longitude,
+            ])
+            ->filter(fn (array $position) => $this->isValidPosition($position))
+            ->values()
+            ->all();
+
+        $coordinates = [$origin, ...$storedCoordinates, $destination];
+
+        return collect($coordinates)
+            ->filter(fn (array $position) => $this->isValidPosition($position))
+            ->unique(fn (array $position) => number_format($position[0], 7).','.number_format($position[1], 7))
+            ->values()
+            ->all();
+    }
+
+    private function isValidPosition(array $position): bool
+    {
+        return count($position) === 2
+            && is_finite((float) $position[0])
+            && is_finite((float) $position[1]);
     }
 
     private function displayName($user): string

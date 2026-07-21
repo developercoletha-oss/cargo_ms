@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('location_name')->nullable();
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
-            $table->string('source', 30)->default('gps');
+            $table->string('source', 30)->default('manual');
             $table->timestamp('recorded_at');
             $table->timestamps();
 

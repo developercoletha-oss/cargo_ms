@@ -5,16 +5,6 @@
     $canAssign = $user->role === 'manager';
     $canRegisterCargo = $user->role === 'store_keeper';
     $isTransporter = $user->role === 'transporter';
-    $liveTrackingCargoes = $isTransporter
-        ? $cargoes->getCollection()
-            ->filter(fn ($cargo) => $cargo->status === 'in_transit' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
-            ->map(fn ($cargo) => [
-                'id' => $cargo->id,
-                'tracking_number' => $cargo->tracking_number,
-                'endpoint' => route('dashboard.cargo.live-location', $cargo),
-            ])
-            ->values()
-        : collect();
 @endphp
 
 @section('page_header_actions')
@@ -29,13 +19,6 @@
 <div class="container-fluid px-3 px-lg-4 py-3">
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-            @if($liveTrackingCargoes->isNotEmpty())
-                <div class="alert alert-info py-2 px-3 mb-3" id="liveGpsStatus">
-                    <i class="bi bi-broadcast-pin me-1"></i>
-                    Live GPS tracking is starting. Allow location access when your browser asks.
-                </div>
-            @endif
-
             <form method="GET" action="{{ route('dashboard.cargo.index') }}" class="row g-2 mb-3">
                 <div class="col-md-5">
                     <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search tracking number/origin/destination...">
@@ -153,7 +136,7 @@
                         <div class="col-12"><strong>Description:</strong> {{ $cargo->detail?->description }}</div>
                         <div class="col-12"><strong>Special Instructions:</strong> {{ $cargo->detail?->special_instructions ?: '-' }}</div>
                         <div class="col-12"><strong>Status:</strong> {{ $cargo->statusLabel() }}</div>
-                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Live GPS location' : '-') }}</div>
+                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Stored route location' : '-') }}</div>
                         <div class="col-md-6"><strong>Location Updated:</strong> {{ optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-' }}</div>
                         <div class="col-12">
                             <strong>Transporter Sign:</strong>
@@ -267,68 +250,3 @@
     @endif
 @endforeach
 @endsection
-
-@push('scripts')
-@if($liveTrackingCargoes->isNotEmpty())
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const liveCargoes = @json($liveTrackingCargoes);
-    const statusEl = document.getElementById('liveGpsStatus');
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    let lastSentAt = 0;
-
-    const setStatus = (message, tone = 'info') => {
-        if (!statusEl) return;
-        statusEl.className = `alert alert-${tone} py-2 px-3 mb-3`;
-        statusEl.innerHTML = `<i class="bi bi-broadcast-pin me-1"></i>${message}`;
-    };
-
-    if (!navigator.geolocation) {
-        setStatus('This browser does not support live GPS tracking.', 'warning');
-        return;
-    }
-
-    const sendLocation = async (position) => {
-        const now = Date.now();
-        if (now - lastSentAt < 3000) return;
-        lastSentAt = now;
-
-        const payload = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-        };
-
-        await Promise.all(liveCargoes.map((cargo) => fetch(cargo.endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify(payload),
-        })));
-
-        setStatus(`Live GPS is active for ${liveCargoes.length} in-transit cargo item(s). Last sent: ${new Date().toLocaleTimeString()}`, 'success');
-    };
-
-    navigator.geolocation.watchPosition(
-        (position) => {
-            sendLocation(position).catch(() => {
-                setStatus('Live GPS is available, but the latest location could not be sent.', 'warning');
-            });
-        },
-        () => {
-            setStatus('Location access is required for live cargo tracking.', 'warning');
-        },
-        {
-            enableHighAccuracy: true,
-            maximumAge: 3000,
-            timeout: 10000,
-        }
-    );
-});
-</script>
-@endif
-@endpush

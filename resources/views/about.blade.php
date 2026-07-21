@@ -19,7 +19,7 @@
                             managing fleets and drivers, handling client invoices, and monitoring delivery performance all in one integrated platform.
                         </p>
                         <ul class="about-list">
-                            <li><i class="bi bi-check-circle-fill"></i><span>Real-time cargo tracking with GPS integration and status updates.</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Real-time cargo tracking with locally stored route coordinates and status updates.</span></li>
                             <li><i class="bi bi-check-circle-fill"></i><span>Complete fleet and driver management to optimize transport resources.</span></li>
                             <li><i class="bi bi-check-circle-fill"></i><span>Client portal, invoicing system, and analytics dashboard for informed decision-making.</span></li>
                         </ul>

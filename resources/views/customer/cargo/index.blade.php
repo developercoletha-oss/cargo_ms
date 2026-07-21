@@ -118,7 +118,7 @@
                         <div class="col-12"><strong>Description:</strong> {{ $cargo->detail?->description }}</div>
                         <div class="col-12"><strong>Special Instructions:</strong> {{ $cargo->detail?->special_instructions ?: '-' }}</div>
                         <div class="col-12"><strong>Status:</strong> {{ $cargo->statusLabel() }}</div>
-                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Live GPS location' : '-') }}</div>
+                        <div class="col-md-6"><strong>Current Location:</strong> {{ $cargo->current_location_city ?: ($cargo->current_location_lat && $cargo->current_location_lng ? 'Stored route location' : '-') }}</div>
                         <div class="col-md-6"><strong>Location Updated:</strong> {{ optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-' }}</div>
                     </div>
                 </div>

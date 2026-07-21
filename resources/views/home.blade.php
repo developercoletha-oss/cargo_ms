@@ -222,7 +222,7 @@
                     </div>
 
                     <div class="mt-4">
-                        <div class="tech-pill"><i class="bi bi-broadcast me-1"></i> Live GPS Tracking</div>
+                        <div class="tech-pill"><i class="bi bi-broadcast me-1"></i> Local Route Tracking</div>
                     </div>
                 </div>
                 <div class="col-lg-5">

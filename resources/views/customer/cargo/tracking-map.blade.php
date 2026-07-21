@@ -39,8 +39,8 @@
                         @endif
 
                         @if($isTransporterMap)
-                            <div id="liveGpsStatus" class="alert alert-secondary py-2 px-3 m-3 mb-0 d-none">
-                                <i class="bi bi-broadcast-pin me-1"></i><span></span>
+                            <div class="alert alert-secondary py-2 px-3 m-3 mb-0">
+                                <i class="bi bi-truck me-1"></i><span>Simulated cargo movement is using local route coordinates.</span>
                             </div>
                         @endif
 
@@ -212,6 +212,10 @@
         background: #b45309;
     }
 
+    .cargo-route-line {
+        stroke-dasharray: 8 10;
+    }
+
     .tracking-entity-row {
         border: 0;
         border-bottom: 1px solid #e2e8f0;
@@ -278,11 +282,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const mode = @json($mode);
     const overviewUrl = @json($overviewUrl);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     let payload = @json($mapPayload);
     let latestMarkers = new Map();
+    let routeLines = new Map();
+    let animatedRoutes = new Map();
     let firstFit = true;
-    let gpsRequestActive = false;
 
     const map = L.map('cargoTrackingMap', {
         scrollWheelZoom: true,
@@ -304,9 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
         && Number.isFinite(Number(marker.position[0]))
         && Number.isFinite(Number(marker.position[1]));
 
+    const validRouteCoordinates = (marker) => (marker.routeCoordinates || [])
+        .filter((position) => Array.isArray(position)
+            && position.length === 2
+            && Number.isFinite(Number(position[0]))
+            && Number.isFinite(Number(position[1])));
+
     const markerIcon = (marker) => L.divIcon({
         className: '',
-        html: `<div class="tracking-marker tracking-marker--${escapeHtml(marker.variant || 'cargo')}"><i class="bi ${escapeHtml(marker.iconClass || 'bi-geo-alt')}"></i></div>`,
+        html: `<div class="tracking-marker tracking-marker--${escapeHtml(marker.variant || 'cargo')}"><i class="bi ${escapeHtml(marker.entityType === 'cargo' ? 'bi-truck' : (marker.iconClass || 'bi-geo-alt'))}"></i></div>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
         popupAnchor: [0, -18],
@@ -450,31 +460,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderMarkers = (fitMap = false) => {
         const visibleMarkers = visiblePayloadMarkers();
         const nextKeys = new Set();
+        const nextRouteKeys = new Set();
 
         visibleMarkers.forEach((markerData) => {
             nextKeys.add(markerData.key);
+            const routeCoordinates = validRouteCoordinates(markerData);
 
             if (latestMarkers.has(markerData.key)) {
                 const marker = latestMarkers.get(markerData.key);
-                marker.setLatLng(markerData.position);
                 marker.setIcon(markerIcon(markerData));
                 marker.setPopupContent(popupContent(markerData));
-                return;
+                animateCargoMarker(markerData, marker);
+            } else {
+                const marker = L.marker(markerData.position, {
+                    icon: markerIcon(markerData),
+                    title: markerData.title || '',
+                }).addTo(map);
+
+                marker.bindPopup(popupContent(markerData));
+                latestMarkers.set(markerData.key, marker);
+                animateCargoMarker(markerData, marker);
             }
 
-            const marker = L.marker(markerData.position, {
-                icon: markerIcon(markerData),
-                title: markerData.title || '',
-            }).addTo(map);
+            if (markerData.entityType !== 'cargo' || routeCoordinates.length < 2) return;
 
-            marker.bindPopup(popupContent(markerData));
-            latestMarkers.set(markerData.key, marker);
+            nextRouteKeys.add(markerData.key);
+
+            if (routeLines.has(markerData.key)) {
+                routeLines.get(markerData.key).setLatLngs(routeCoordinates);
+            } else {
+                routeLines.set(markerData.key, L.polyline(routeCoordinates, {
+                    className: 'cargo-route-line',
+                    color: '#2563eb',
+                    opacity: 0.7,
+                    weight: 4,
+                }).addTo(map));
+            }
         });
 
         latestMarkers.forEach((marker, key) => {
             if (nextKeys.has(key)) return;
             map.removeLayer(marker);
             latestMarkers.delete(key);
+            animatedRoutes.delete(key);
+        });
+
+        routeLines.forEach((routeLine, key) => {
+            if (nextRouteKeys.has(key)) return;
+            map.removeLayer(routeLine);
+            routeLines.delete(key);
         });
 
         if (mode === 'manager') {
@@ -485,6 +519,60 @@ document.addEventListener('DOMContentLoaded', () => {
             fitVisibleMarkers(visibleMarkers);
             firstFit = false;
         }
+    };
+
+    const interpolatePosition = (from, to, progress) => [
+        Number(from[0]) + ((Number(to[0]) - Number(from[0])) * progress),
+        Number(from[1]) + ((Number(to[1]) - Number(from[1])) * progress),
+    ];
+
+    const routePositionAt = (routeCoordinates, routeProgress) => {
+        if (routeCoordinates.length === 0) return null;
+        if (routeCoordinates.length === 1) return routeCoordinates[0];
+
+        const scaledProgress = routeProgress * (routeCoordinates.length - 1);
+        const fromIndex = Math.floor(scaledProgress);
+        const toIndex = Math.min(fromIndex + 1, routeCoordinates.length - 1);
+
+        return interpolatePosition(
+            routeCoordinates[fromIndex],
+            routeCoordinates[toIndex],
+            scaledProgress - fromIndex
+        );
+    };
+
+    const animateCargoMarker = (markerData, marker) => {
+        const routeCoordinates = validRouteCoordinates(markerData);
+
+        if (markerData.entityType !== 'cargo' || routeCoordinates.length < 2) {
+            marker.setLatLng(markerData.position);
+            return;
+        }
+
+        const existing = animatedRoutes.get(markerData.key);
+        const signature = JSON.stringify(routeCoordinates);
+
+        if (existing?.signature === signature) return;
+
+        animatedRoutes.set(markerData.key, {
+            signature,
+            startedAt: performance.now(),
+        });
+
+        const duration = Math.max(8000, routeCoordinates.length * (payload.animationIntervalMs || 900));
+
+        const step = (timestamp) => {
+            const routeState = animatedRoutes.get(markerData.key);
+            if (!routeState || routeState.signature !== signature) return;
+
+            const elapsed = (timestamp - routeState.startedAt) % duration;
+            const position = routePositionAt(routeCoordinates, elapsed / duration);
+
+            if (position) marker.setLatLng(position);
+            window.requestAnimationFrame(step);
+        };
+
+        window.requestAnimationFrame(step);
     };
 
     const updateDetailHeader = () => {
@@ -563,72 +651,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMarkers(false);
     };
 
-    const setLiveStatus = (message, tone = 'secondary') => {
-        const status = document.getElementById('liveGpsStatus');
-        if (!status) return;
-
-        status.className = `alert alert-${tone} py-2 px-3 m-3 mb-0`;
-        status.querySelector('span').textContent = message;
-    };
-
-    const sendTransporterLocation = () => {
-        if (mode !== 'transporter') return;
-
-        if (!payload.liveLocationUrl) {
-            setLiveStatus('Live GPS starts when the selected cargo is in transit.', 'secondary');
-            return;
-        }
-
-        if (!navigator.geolocation) {
-            setLiveStatus('This browser does not support GPS location.', 'warning');
-            return;
-        }
-
-        if (gpsRequestActive) return;
-        gpsRequestActive = true;
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                try {
-                    const response = await fetch(payload.liveLocationUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                        }),
-                    });
-
-                    if (response.ok) {
-                        setLiveStatus(`Live GPS sent at ${new Date().toLocaleTimeString()}`, 'success');
-                        await refreshDetail();
-                    } else {
-                        setLiveStatus('Live GPS could not be saved for this cargo.', 'warning');
-                    }
-                } catch (error) {
-                    setLiveStatus('Live GPS could not be sent right now.', 'warning');
-                } finally {
-                    gpsRequestActive = false;
-                }
-            },
-            () => {
-                gpsRequestActive = false;
-                setLiveStatus('Location permission is required for live GPS.', 'warning');
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 2000,
-                timeout: 10000,
-            }
-        );
-    };
-
     renderMarkers(true);
     updateDetailHeader();
     updateManagerStats();
@@ -652,10 +674,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    if (mode === 'transporter') {
-        sendTransporterLocation();
-        window.setInterval(sendTransporterLocation, 3000);
-    }
 });
 </script>
 @endif
