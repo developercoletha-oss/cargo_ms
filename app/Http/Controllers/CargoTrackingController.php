@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cargo;
+use App\Models\CargoLocationUpdate;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 class CargoTrackingController extends Controller
@@ -54,8 +56,9 @@ class CargoTrackingController extends Controller
                     'transportStaff.user',
                     'locationUpdates' => fn ($query) => $query
                         ->select(['id', 'cargo_id', 'location_name', 'latitude', 'longitude', 'recorded_at'])
-                        ->orderBy('recorded_at')
-                        ->orderBy('id'),
+                        ->latest('recorded_at')
+                        ->latest('id')
+                        ->limit(1),
                 ])
                 ->where('tracking_number', $trackingNumber)
                 ->first();
@@ -73,49 +76,53 @@ class CargoTrackingController extends Controller
         ]);
     }
 
+    public function location(string $trackingNumber): JsonResponse
+    {
+        $cargo = Cargo::query()
+            ->with([
+                'transportStaff.user',
+                'locationUpdates' => fn ($query) => $query
+                    ->select(['id', 'cargo_id', 'location_name', 'latitude', 'longitude', 'recorded_at'])
+                    ->latest('recorded_at')
+                    ->latest('id')
+                    ->limit(1),
+            ])
+            ->where('tracking_number', strtoupper(trim($trackingNumber)))
+            ->firstOrFail();
+
+        return response()->json($this->trackingPayload($cargo));
+    }
+
     private function trackingPayload(Cargo $cargo): array
     {
         $origin = $this->areaCoordinates($cargo->origin_city);
         $destination = $this->areaCoordinates($cargo->destination_city);
-        $routeCoordinates = $this->routeCoordinates($cargo, $origin, $destination);
-        $current = $routeCoordinates[0];
+        $latestUpdate = $cargo->locationUpdates->first();
+        $current = $this->currentCoordinates($cargo, $latestUpdate, $origin);
         $transportUser = $cargo->transportStaff?->user;
 
         return [
             'cargoId' => $cargo->tracking_number,
+            'rawStatus' => $cargo->status,
             'status' => $cargo->statusLabel(),
             'statusClass' => $cargo->statusBadgeClass(),
-            'currentLocation' => $cargo->current_location_city ?: $cargo->origin_city,
+            'currentLocation' => $latestUpdate?->location_name ?: $cargo->current_location_city ?: $cargo->origin_city,
             'origin' => $cargo->origin_city,
+            'originCoordinates' => $origin,
             'destination' => $cargo->destination_city,
+            'destinationCoordinates' => $destination,
             'transporter' => $transportUser?->full_name ?: $transportUser?->name ?: 'Not assigned yet',
-            'routeCoordinates' => $routeCoordinates,
-            'routeLocations' => $this->routeLocations($cargo, count($routeCoordinates)),
             'currentLatitude' => number_format((float) $current[0], 7, '.', ''),
             'currentLongitude' => number_format((float) $current[1], 7, '.', ''),
-            'animationIntervalMs' => 3000,
+            'currentLocationUpdatedAt' => optional($cargo->current_location_updated_at)->toIso8601String(),
+            'latestLocationUpdate' => $latestUpdate ? [
+                'latitude' => number_format((float) $latestUpdate->latitude, 7, '.', ''),
+                'longitude' => number_format((float) $latestUpdate->longitude, 7, '.', ''),
+                'locationName' => $latestUpdate->location_name,
+                'recordedAt' => optional($latestUpdate->recorded_at)->toIso8601String(),
+            ] : null,
+            'locationUrl' => route('tracking.location', ['trackingNumber' => $cargo->tracking_number]),
         ];
-    }
-
-    private function routeLocations(Cargo $cargo, int $routeLength): array
-    {
-        $updates = $cargo->locationUpdates
-            ->map(fn ($update) => $update->location_name)
-            ->filter()
-            ->values();
-
-        $locations = array_fill(0, $routeLength, "{$cargo->origin_city} to {$cargo->destination_city}");
-        if ($routeLength > 0) {
-            $locations[0] = $cargo->origin_city;
-            $locations[$routeLength - 1] = $cargo->destination_city;
-        }
-
-        foreach ($updates as $index => $locationName) {
-            $routeIndex = min($index + 1, max(0, $routeLength - 2));
-            $locations[$routeIndex] = $locationName;
-        }
-
-        return $locations;
     }
 
     private function areaCoordinates(?string $city): array
@@ -123,45 +130,15 @@ class CargoTrackingController extends Controller
         return self::AREA_COORDINATES[$city] ?? [-6.3690, 34.8888];
     }
 
-    private function routeCoordinates(Cargo $cargo, array $origin, array $destination): array
+    private function currentCoordinates(Cargo $cargo, ?CargoLocationUpdate $latestUpdate, array $origin): array
     {
-        $storedCoordinates = $cargo->locationUpdates
-            ->map(fn ($update) => [
-                (float) $update->latitude,
-                (float) $update->longitude,
-            ])
-            ->filter(fn (array $position) => $this->isValidPosition($position))
-            ->values()
-            ->all();
-
-        $coordinates = $storedCoordinates === []
-            ? $this->simulatedRoadRoute($origin, $destination)
-            : [$origin, ...$storedCoordinates, $destination];
-
-        return collect($coordinates)
-            ->filter(fn (array $position) => $this->isValidPosition($position))
-            ->unique(fn (array $position) => number_format($position[0], 7).','.number_format($position[1], 7))
-            ->values()
-            ->all();
-    }
-
-    private function simulatedRoadRoute(array $origin, array $destination): array
-    {
-        $coordinates = [$origin];
-
-        foreach ([0.18, 0.34, 0.50, 0.66, 0.82] as $index => $progress) {
-            $curve = sin($progress * pi()) * 0.22;
-            $direction = $index % 2 === 0 ? 1 : -1;
-
-            $coordinates[] = [
-                $origin[0] + (($destination[0] - $origin[0]) * $progress) + ($curve * $direction),
-                $origin[1] + (($destination[1] - $origin[1]) * $progress) - ($curve * 0.45 * $direction),
-            ];
+        if ($latestUpdate && $this->isValidPosition([(float) $latestUpdate->latitude, (float) $latestUpdate->longitude])) {
+            return [(float) $latestUpdate->latitude, (float) $latestUpdate->longitude];
         }
 
-        $coordinates[] = $destination;
+        $current = [(float) $cargo->current_location_lat, (float) $cargo->current_location_lng];
 
-        return $coordinates;
+        return $this->isValidPosition($current) ? $current : $origin;
     }
 
     private function isValidPosition(array $position): bool

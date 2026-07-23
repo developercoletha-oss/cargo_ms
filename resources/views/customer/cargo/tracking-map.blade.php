@@ -40,7 +40,7 @@
 
                         @if($isTransporterMap)
                             <div class="alert alert-secondary py-2 px-3 m-3 mb-0">
-                                <i class="bi bi-truck me-1"></i><span>Simulated cargo movement is using local route coordinates.</span>
+                                <i class="bi bi-truck me-1"></i><span>Live GPS movement updates from the latest cargo location records.</span>
                             </div>
                         @endif
 
@@ -109,6 +109,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
 <style>
     .cargo-map-workspace {
         display: grid;
@@ -212,8 +213,8 @@
         background: #b45309;
     }
 
-    .cargo-route-line {
-        stroke-dasharray: 8 10;
+    .leaflet-routing-container {
+        display: none;
     }
 
     .tracking-entity-row {
@@ -278,15 +279,16 @@
 @push('scripts')
 @if($mapPayload)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const mode = @json($mode);
     const overviewUrl = @json($overviewUrl);
     let payload = @json($mapPayload);
     let latestMarkers = new Map();
-    let routeLines = new Map();
-    let animatedRoutes = new Map();
+    let routingControls = new Map();
     let firstFit = true;
+    let detailPollingTimer = null;
 
     const map = L.map('cargoTrackingMap', {
         scrollWheelZoom: true,
@@ -308,11 +310,28 @@ document.addEventListener('DOMContentLoaded', () => {
         && Number.isFinite(Number(marker.position[0]))
         && Number.isFinite(Number(marker.position[1]));
 
-    const validRouteCoordinates = (marker) => (marker.routeCoordinates || [])
+    const validRouteWaypoints = (marker) => (marker.routeWaypoints || [])
         .filter((position) => Array.isArray(position)
             && position.length === 2
             && Number.isFinite(Number(position[0]))
             && Number.isFinite(Number(position[1])));
+
+    const normalizeStatus = (status) => String(status || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+
+    const isTransitStatus = (data) => {
+        const cargo = data?.cargo || data || {};
+        const statuses = [
+            data?.rawStatus,
+            data?.status,
+            cargo.rawStatus,
+            cargo.status,
+        ].map(normalizeStatus);
+
+        return statuses.includes('in_transit') || statuses.includes('on_transit');
+    };
 
     const markerIcon = (marker) => L.divIcon({
         className: '',
@@ -464,13 +483,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         visibleMarkers.forEach((markerData) => {
             nextKeys.add(markerData.key);
-            const routeCoordinates = validRouteCoordinates(markerData);
 
             if (latestMarkers.has(markerData.key)) {
                 const marker = latestMarkers.get(markerData.key);
                 marker.setIcon(markerIcon(markerData));
                 marker.setPopupContent(popupContent(markerData));
-                animateCargoMarker(markerData, marker);
+                smoothMoveMarker(marker, markerData.position, markerData);
             } else {
                 const marker = L.marker(markerData.position, {
                     icon: markerIcon(markerData),
@@ -479,36 +497,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 marker.bindPopup(popupContent(markerData));
                 latestMarkers.set(markerData.key, marker);
-                animateCargoMarker(markerData, marker);
             }
 
-            if (markerData.entityType !== 'cargo' || routeCoordinates.length < 2) return;
+            if (markerData.entityType !== 'cargo') return;
 
-            nextRouteKeys.add(markerData.key);
-
-            if (routeLines.has(markerData.key)) {
-                routeLines.get(markerData.key).setLatLngs(routeCoordinates);
-            } else {
-                routeLines.set(markerData.key, L.polyline(routeCoordinates, {
-                    className: 'cargo-route-line',
-                    color: '#2563eb',
-                    opacity: 0.7,
-                    weight: 4,
-                }).addTo(map));
-            }
+            drawOsrmRoute(markerData, nextRouteKeys);
         });
 
         latestMarkers.forEach((marker, key) => {
             if (nextKeys.has(key)) return;
             map.removeLayer(marker);
             latestMarkers.delete(key);
-            animatedRoutes.delete(key);
         });
 
-        routeLines.forEach((routeLine, key) => {
+        routingControls.forEach((routingControl, key) => {
             if (nextRouteKeys.has(key)) return;
-            map.removeLayer(routeLine);
-            routeLines.delete(key);
+            map.removeControl(routingControl);
+            routingControls.delete(key);
         });
 
         if (mode === 'manager') {
@@ -526,50 +531,77 @@ document.addEventListener('DOMContentLoaded', () => {
         Number(from[1]) + ((Number(to[1]) - Number(from[1])) * progress),
     ];
 
-    const routePositionAt = (routeCoordinates, routeProgress) => {
-        if (routeCoordinates.length === 0) return null;
-        if (routeCoordinates.length === 1) return routeCoordinates[0];
+    const routeSignature = (waypoints) => waypoints
+        .map((position) => `${Number(position[0]).toFixed(7)},${Number(position[1]).toFixed(7)}`)
+        .join('|');
 
-        const scaledProgress = routeProgress * (routeCoordinates.length - 1);
-        const fromIndex = Math.floor(scaledProgress);
-        const toIndex = Math.min(fromIndex + 1, routeCoordinates.length - 1);
+    const drawOsrmRoute = (markerData, nextRouteKeys) => {
+        const routeWaypoints = validRouteWaypoints(markerData);
 
-        return interpolatePosition(
-            routeCoordinates[fromIndex],
-            routeCoordinates[toIndex],
-            scaledProgress - fromIndex
-        );
-    };
-
-    const animateCargoMarker = (markerData, marker) => {
-        const routeCoordinates = validRouteCoordinates(markerData);
-
-        if (markerData.entityType !== 'cargo' || routeCoordinates.length < 2) {
-            marker.setLatLng(markerData.position);
+        if (!window.L?.Routing || routeWaypoints.length < 2) {
             return;
         }
 
-        const existing = animatedRoutes.get(markerData.key);
-        const signature = JSON.stringify(routeCoordinates);
+        const signature = routeSignature(routeWaypoints);
+        const existing = routingControls.get(markerData.key);
+
+        nextRouteKeys.add(markerData.key);
 
         if (existing?.signature === signature) return;
 
-        animatedRoutes.set(markerData.key, {
-            signature,
-            startedAt: performance.now(),
-        });
+        if (existing) {
+            map.removeControl(existing);
+            routingControls.delete(markerData.key);
+        }
 
-        const duration = Math.max(8000, routeCoordinates.length * (payload.animationIntervalMs || 900));
+        const routingControl = L.Routing.control({
+            waypoints: routeWaypoints.map((position) => L.latLng(position[0], position[1])),
+            router: L.Routing.osrmv1({
+                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                profile: 'driving',
+            }),
+            lineOptions: {
+                styles: [
+                    { color: '#1d4ed8', opacity: 0.82, weight: 5 },
+                    { color: '#ffffff', opacity: 0.6, weight: 2 },
+                ],
+            },
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: false,
+            routeWhileDragging: false,
+            show: false,
+            createMarker: () => null,
+        }).addTo(map);
+
+        routingControl.signature = signature;
+        routingControls.set(markerData.key, routingControl);
+    };
+
+    const smoothMoveMarker = (marker, nextPosition, markerData = null) => {
+        const current = marker.getLatLng();
+        const from = [current.lat, current.lng];
+        const to = [Number(nextPosition[0]), Number(nextPosition[1])];
+
+        if (!Number.isFinite(to[0]) || !Number.isFinite(to[1])) return;
+
+        const startedAt = performance.now();
+        const duration = 900;
 
         const step = (timestamp) => {
-            const routeState = animatedRoutes.get(markerData.key);
-            if (!routeState || routeState.signature !== signature) return;
+            const progress = Math.min(1, (timestamp - startedAt) / duration);
+            const position = interpolatePosition(from, to, progress);
+            marker.setLatLng(position);
 
-            const elapsed = (timestamp - routeState.startedAt) % duration;
-            const position = routePositionAt(routeCoordinates, elapsed / duration);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+                return;
+            }
 
-            if (position) marker.setLatLng(position);
-            window.requestAnimationFrame(step);
+            if (markerData?.entityType === 'cargo' && isTransitStatus(markerData.cargo)) {
+                map.panTo(position, { animate: true, duration: 0.8 });
+                marker.openPopup();
+            }
         };
 
         window.requestAnimationFrame(step);
@@ -630,6 +662,11 @@ document.addEventListener('DOMContentLoaded', () => {
         payload = await response.json();
         updateDetailHeader();
         renderMarkers(false);
+
+        if (!isTransitStatus(payload) && detailPollingTimer) {
+            window.clearInterval(detailPollingTimer);
+            detailPollingTimer = null;
+        }
     };
 
     const refreshOverview = async () => {
@@ -667,11 +704,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.setInterval(() => {
             refreshOverview().catch(() => {});
-        }, 3000);
+        }, 5000);
     } else {
-        window.setInterval(() => {
+        if (isTransitStatus(payload)) {
             refreshDetail().catch(() => {});
-        }, 3000);
+            detailPollingTimer = window.setInterval(() => {
+                refreshDetail().catch(() => {});
+            }, 5000);
+        }
     }
 
 });

@@ -5,6 +5,7 @@
 @push('critical-head')
     @if($trackingPayload)
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
     @endif
     <style>
         .tracking-page {
@@ -57,6 +58,17 @@
             border-radius: 8px;
             overflow: hidden;
             background: #e2e8f0;
+        }
+
+        .live-tracking-map-message {
+            align-items: center;
+            color: #475569;
+            display: flex;
+            font-weight: 600;
+            height: 100%;
+            justify-content: center;
+            padding: 1rem;
+            text-align: center;
         }
 
         .tracking-stat-list {
@@ -117,6 +129,10 @@
             display: grid;
             gap: 0.25rem;
             font-size: 0.82rem;
+        }
+
+        .leaflet-routing-container {
+            display: none;
         }
 
         @media (max-width: 991.98px) {
@@ -195,8 +211,8 @@
                             <div class="card-body p-4">
                                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                                     <div>
-                                        <h2 class="h5 fw-bold mb-1">Live Route Simulation</h2>
-                                        <div class="text-muted small">OpenStreetMap follows the cargo movement in real time.</div>
+                                        <h2 class="h5 fw-bold mb-1">Live Road Route</h2>
+                                        <div class="text-muted small">OpenStreetMap follows live GPS updates along the driving route.</div>
                                     </div>
                                     <span class="badge text-bg-{{ $statusClass }}">Automatic updates</span>
                                 </div>
@@ -287,15 +303,44 @@
 @push('scripts')
 @if($trackingPayload)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const tracking = @json($trackingPayload);
-    const route = (tracking.routeCoordinates || [])
-        .filter((point) => Array.isArray(point) && point.length === 2)
-        .map((point) => [Number(point[0]), Number(point[1])])
-        .filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+    const origin = normalizePoint(tracking.originCoordinates);
+    const destination = normalizePoint(tracking.destinationCoordinates);
+    const initialTruckPosition = normalizePoint([
+        tracking.currentLatitude,
+        tracking.currentLongitude,
+    ]) || origin;
 
-    if (route.length < 2 || !window.L) return;
+    const escapeHtml = (value) => {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
+    };
+
+    const mapElement = document.getElementById('customerLiveTrackingMap');
+    const showMapMessage = (message) => {
+        if (mapElement) {
+            mapElement.innerHTML = `<div class="live-tracking-map-message">${escapeHtml(message)}</div>`;
+        }
+    };
+
+    if (!origin || !destination) {
+        showMapMessage('Route coordinates are not available for this cargo.');
+        return;
+    }
+
+    if (!window.L) {
+        showMapMessage('Leaflet could not load. Please check your internet connection and refresh.');
+        return;
+    }
+
+    if (!L.Routing) {
+        showMapMessage('Leaflet Routing Machine could not load. Please check the CDN connection and refresh.');
+        return;
+    }
 
     const map = L.map('customerLiveTrackingMap', {
         scrollWheelZoom: true,
@@ -306,30 +351,23 @@ document.addEventListener('DOMContentLoaded', () => {
         attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
-    const escapeHtml = (value) => {
-        const div = document.createElement('div');
-        div.textContent = value ?? '';
-        return div.innerHTML;
-    };
+    let routeLine = null;
+    let routeSummary = null;
+    let previousTruckPosition = initialTruckPosition;
+    let latestStatus = tracking.status || '-';
+    let latestStatusClass = tracking.statusClass || 'secondary';
+    let pollingTimer = null;
 
-    const totalDistance = route.slice(1).reduce((sum, point, index) => {
-        return sum + map.distance(route[index], point);
-    }, 0);
+    function normalizePoint(point) {
+        if (!Array.isArray(point) || point.length !== 2) return null;
 
-    const routeDuration = Math.max(1, route.length - 1) * Number(tracking.animationIntervalMs || 3000);
-    const routeLocations = tracking.routeLocations || [];
-    const remainingLine = L.polyline(route, {
-        color: '#2563eb',
-        opacity: 0.75,
-        weight: 5,
-    }).addTo(map);
-    const travelledLine = L.polyline([route[0]], {
-        color: '#16a34a',
-        opacity: 0.95,
-        weight: 6,
-    }).addTo(map);
+        const lat = Number(point[0]);
+        const lng = Number(point[1]);
 
-    const startMarker = L.marker(route[0], {
+        return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+    }
+
+    const startMarker = L.marker(origin, {
         icon: L.divIcon({
             className: '',
             html: '<div class="live-truck-marker" style="background:#0f766e"><i class="bi bi-geo-alt-fill"></i></div>',
@@ -339,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: tracking.origin || 'Origin',
     }).addTo(map);
 
-    const endMarker = L.marker(route[route.length - 1], {
+    const endMarker = L.marker(destination, {
         icon: L.divIcon({
             className: '',
             html: '<div class="live-truck-marker" style="background:#7c3aed"><i class="bi bi-flag-fill"></i></div>',
@@ -360,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
         popupAnchor: [0, -20],
     });
 
-    const truckMarker = L.marker(route[0], {
+    const truckMarker = L.marker(initialTruckPosition, {
         icon: truckIcon(0),
         title: tracking.cargoId || 'Cargo',
     }).addTo(map);
@@ -372,7 +410,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatKm = (meters) => `${(meters / 1000).toFixed(2)} km`;
 
-    const interpolate = (from, to, progress) => [
+    const normalizeStatus = (status) => String(status || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+
+    const isTransitStatus = (payload) => {
+        const normalizedStatus = normalizeStatus(payload.status);
+        const normalizedRawStatus = normalizeStatus(payload.rawStatus);
+
+        return ['in_transit', 'on_transit'].includes(normalizedStatus)
+            || ['in_transit', 'on_transit'].includes(normalizedRawStatus);
+    };
+
+    const formatLastUpdated = (payload) => {
+        const recordedAt = payload.latestLocationUpdate?.recordedAt || payload.currentLocationUpdatedAt;
+        if (!recordedAt) return '-';
+
+        const recordedTime = new Date(recordedAt).getTime();
+        if (!Number.isFinite(recordedTime)) return '-';
+
+        const seconds = Math.max(0, Math.floor((Date.now() - recordedTime) / 1000));
+        if (seconds < 60) return 'Just now';
+
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+
+        return new Date(recordedAt).toLocaleString();
+    };
+
+    const interpolatePoint = (from, to, progress) => [
         from[0] + ((to[0] - from[0]) * progress),
         from[1] + ((to[1] - from[1]) * progress),
     ];
@@ -387,75 +457,175 @@ document.addEventListener('DOMContentLoaded', () => {
         return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     };
 
-    const popupHtml = (location, travelled, remaining, eta) => `
+    const popupHtml = (payload, remaining) => `
         <div class="live-tracking-popup">
             <div class="live-tracking-popup-title">${escapeHtml(tracking.cargoId)}</div>
-            <div class="mb-2"><span class="badge text-bg-${escapeHtml(tracking.statusClass || 'secondary')}">${escapeHtml(tracking.status)}</span></div>
+            <div class="mb-2"><span class="badge text-bg-${escapeHtml(latestStatusClass)}">${escapeHtml(latestStatus)}</span></div>
             <div class="live-tracking-popup-grid">
-                <div><strong>Current Location:</strong> ${escapeHtml(location)}</div>
-                <div><strong>Distance Travelled:</strong> ${escapeHtml(formatKm(travelled))}</div>
-                <div><strong>ETA:</strong> ${escapeHtml(eta)}</div>
+                <div><strong>Current Location:</strong> ${escapeHtml(payload.currentLocation || '-')}</div>
+                <div><strong>Last Updated:</strong> ${escapeHtml(formatLastUpdated(payload))}</div>
+                <div><strong>Coordinates:</strong> ${escapeHtml(payload.currentLatitude)}, ${escapeHtml(payload.currentLongitude)}</div>
+                <div><strong>Remaining:</strong> ${escapeHtml(formatKm(remaining))}</div>
             </div>
         </div>
     `;
 
-    const positionAtProgress = (progress) => {
-        const scaled = progress * (route.length - 1);
-        const index = Math.min(Math.floor(scaled), route.length - 2);
-        const segmentProgress = scaled - index;
-        const position = interpolate(route[index], route[index + 1], segmentProgress);
-        const travelledRoute = route.slice(0, index + 1);
+    const routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(origin[0], origin[1]),
+            L.latLng(destination[0], destination[1]),
+        ],
+        router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1',
+            profile: 'driving',
+        }),
+        lineOptions: {
+            styles: [
+                { color: '#1d4ed8', opacity: 0.85, weight: 6 },
+                { color: '#ffffff', opacity: 0.65, weight: 2 },
+            ],
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        routeWhileDragging: false,
+        show: false,
+        createMarker: () => null,
+    }).addTo(map);
 
-        travelledRoute.push(position);
+    routingControl.on('routesfound', (event) => {
+        const route = event.routes[0];
+        routeLine = route.coordinates || [];
+        routeSummary = route.summary || null;
+        updateRouteStats(truckMarker.getLatLng());
+    });
 
-        return {
-            index,
-            position,
-            travelledRoute,
-            remainingRoute: [position, ...route.slice(index + 1)],
-            bearing: bearingBetween(route[index], route[index + 1]),
-            location: routeLocations[index] || tracking.currentLocation || `${tracking.origin} to ${tracking.destination}`,
-        };
+    routingControl.on('routingerror', () => {
+        map.fitBounds(L.latLngBounds([origin, destination]), {
+            padding: [36, 36],
+            maxZoom: 9,
+        });
+    });
+
+    const distanceAlongRouteTo = (latLng) => {
+        if (!routeLine || routeLine.length < 2) {
+            return map.distance(origin, [latLng.lat, latLng.lng]);
+        }
+
+        let travelled = 0;
+        let nearestIndex = 0;
+        let nearestDistance = Infinity;
+
+        routeLine.forEach((point, index) => {
+            const distance = map.distance(latLng, point);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = index;
+            }
+        });
+
+        for (let index = 1; index <= nearestIndex; index += 1) {
+            travelled += map.distance(routeLine[index - 1], routeLine[index]);
+        }
+
+        return travelled;
     };
 
-    const updateView = (timestamp, startedAt) => {
-        const elapsed = (timestamp - startedAt) % routeDuration;
-        const progress = elapsed / routeDuration;
-        const state = positionAtProgress(progress);
-        const travelled = totalDistance * progress;
-        const remaining = Math.max(0, totalDistance - travelled);
-        const etaMinutes = Math.max(1, Math.ceil((routeDuration - elapsed) / 60000));
-        const eta = etaMinutes === 1 ? 'About 1 minute' : `About ${etaMinutes} minutes`;
-        const [lat, lng] = state.position;
+    const updateRouteStats = (latLng) => {
+        const total = routeSummary?.totalDistance || map.distance(origin, destination);
+        const travelled = Math.min(total, distanceAlongRouteTo(latLng));
+        const remaining = Math.max(0, total - travelled);
+        const totalTime = routeSummary?.totalTime || 0;
+        const etaSeconds = total > 0 && totalTime > 0 ? Math.ceil((remaining / total) * totalTime) : 0;
+        const eta = etaSeconds > 0 ? `${Math.max(1, Math.ceil(etaSeconds / 60))} min` : 'Calculating...';
 
-        truckMarker.setLatLng(state.position);
-        truckMarker.setIcon(truckIcon(state.bearing));
-        truckMarker.setPopupContent(popupHtml(state.location, travelled, remaining, eta));
-        travelledLine.setLatLngs(state.travelledRoute);
-        remainingLine.setLatLngs(state.remainingRoute);
-        map.panTo(state.position, { animate: true, duration: 0.8 });
-
-        setText('trackingCurrentLocation', state.location);
-        setText('trackingCurrentLatitude', lat.toFixed(7));
-        setText('trackingCurrentLongitude', lng.toFixed(7));
         setText('trackingDistanceTravelled', formatKm(travelled));
         setText('trackingRemainingDistance', formatKm(remaining));
         setText('trackingEta', eta);
 
-        window.requestAnimationFrame((nextTimestamp) => updateView(nextTimestamp, startedAt));
+        return remaining;
     };
 
-    map.fitBounds(L.latLngBounds(route), {
-        padding: [36, 36],
-        maxZoom: 9,
-    });
+    const moveTruck = (nextPosition, payload) => {
+        const startPosition = previousTruckPosition;
+        const bearing = bearingBetween(startPosition, nextPosition);
+        const startedAt = performance.now();
+        const duration = 900;
 
-    truckMarker.bindPopup(popupHtml(tracking.currentLocation, 0, totalDistance, 'Calculating...')).openPopup();
+        const animate = (timestamp) => {
+            const progress = Math.min(1, (timestamp - startedAt) / duration);
+            const currentPosition = interpolatePoint(startPosition, nextPosition, progress);
+            const latLng = L.latLng(currentPosition[0], currentPosition[1]);
+            const remaining = updateRouteStats(latLng);
 
-    window.setTimeout(() => {
-        map.invalidateSize();
-        window.requestAnimationFrame((timestamp) => updateView(timestamp, timestamp));
-    }, 150);
+            truckMarker.setLatLng(latLng);
+            truckMarker.setIcon(truckIcon(bearing));
+            truckMarker.setPopupContent(popupHtml(payload, remaining));
+
+            if (progress < 1) {
+                window.requestAnimationFrame(animate);
+                return;
+            }
+
+            previousTruckPosition = nextPosition;
+            map.panTo(latLng, { animate: true, duration: 0.8 });
+            truckMarker.openPopup();
+        };
+
+        window.requestAnimationFrame(animate);
+    };
+
+    const updateTruckFromPayload = (payload) => {
+        const nextPosition = normalizePoint([
+            payload.currentLatitude,
+            payload.currentLongitude,
+        ]);
+
+        if (!nextPosition) return;
+
+        latestStatus = payload.status || latestStatus;
+        latestStatusClass = payload.statusClass || latestStatusClass;
+
+        if (!isTransitStatus(payload) && pollingTimer) {
+            window.clearInterval(pollingTimer);
+            pollingTimer = null;
+        }
+
+        setText('trackingCurrentLocation', payload.currentLocation || '-');
+        setText('trackingCurrentLatitude', Number(nextPosition[0]).toFixed(7));
+        setText('trackingCurrentLongitude', Number(nextPosition[1]).toFixed(7));
+
+        moveTruck(nextPosition, {
+            ...payload,
+            currentLatitude: Number(nextPosition[0]).toFixed(7),
+            currentLongitude: Number(nextPosition[1]).toFixed(7),
+        });
+    };
+
+    const fetchLatestLocation = async () => {
+        try {
+            const response = await fetch(tracking.locationUrl, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) return;
+
+            updateTruckFromPayload(await response.json());
+        } catch (error) {
+            console.warn('Unable to refresh cargo location.', error);
+        }
+    };
+
+    const initialRemaining = updateRouteStats(L.latLng(initialTruckPosition[0], initialTruckPosition[1]));
+    truckMarker.bindPopup(popupHtml(tracking, initialRemaining)).openPopup();
+
+    window.setTimeout(() => map.invalidateSize(), 150);
+
+    if (isTransitStatus(tracking)) {
+        fetchLatestLocation();
+        pollingTimer = window.setInterval(fetchLatestLocation, 5000);
+    }
 });
 </script>
 @endif

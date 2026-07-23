@@ -118,8 +118,9 @@ class CargoTrackingMapController extends Controller
                 'detail:id,cargo_id,description,cargo_type,weight_kg,volume_cbm,quantity,package_count,estimated_value,is_fragile,is_hazardous,special_instructions',
                 'locationUpdates' => fn ($query) => $query
                     ->select(['id', 'cargo_id', 'location_name', 'latitude', 'longitude', 'recorded_at'])
-                    ->orderBy('recorded_at')
-                    ->orderBy('id'),
+                    ->latest('recorded_at')
+                    ->latest('id')
+                    ->limit(1),
                 'transportStaff:id,user_id,staff_code,vehicle_type,vehicle_plate,is_active',
                 'transportStaff.user:id,name,full_name,email,phone',
             ])
@@ -178,8 +179,7 @@ class CargoTrackingMapController extends Controller
         foreach ($cargoes as $cargo) {
             $origin = $this->areaCoordinates($cargo->origin_city);
             $destination = $this->areaCoordinates($cargo->destination_city);
-            $routeCoordinates = $this->routeCoordinates($cargo, $origin, $destination);
-            $current = $this->currentCoordinates($cargo, $origin, $destination, $routeCoordinates);
+            $current = $this->currentCoordinates($cargo, $origin, $destination);
             $cargoInfo = $this->cargoInfo($cargo, $current);
 
             $this->appendStoreMarker($storeMarkers, $cargo, 'pickup', 'Pickup Store', $origin);
@@ -193,7 +193,7 @@ class CargoTrackingMapController extends Controller
                 'title' => $cargo->tracking_number,
                 'subtitle' => $this->currentLocationLabel($cargo),
                 'position' => $current,
-                'routeCoordinates' => $routeCoordinates,
+                'routeWaypoints' => [$origin, $destination],
                 'cargo' => $cargoInfo,
                 'searchText' => $this->searchText([
                     $cargo->tracking_number,
@@ -229,22 +229,21 @@ class CargoTrackingMapController extends Controller
     {
         $origin = $this->areaCoordinates($cargo->origin_city);
         $destination = $this->areaCoordinates($cargo->destination_city);
-        $routeCoordinates = $this->routeCoordinates($cargo, $origin, $destination);
-        $current = $this->currentCoordinates($cargo, $origin, $destination, $routeCoordinates);
+        $current = $this->currentCoordinates($cargo, $origin, $destination);
         $cargoInfo = $this->cargoInfo($cargo, $current);
 
         return [
             'mode' => $this->trackingMode($request),
             'cargoId' => $cargo->id,
             'trackingNumber' => $cargo->tracking_number,
+            'rawStatus' => $cargo->status,
             'status' => $cargo->statusLabel(),
             'statusClass' => $cargo->statusBadgeClass(),
             'currentLocationLabel' => $cargoInfo['currentLocationLabel'],
             'currentLocationTime' => $cargoInfo['currentLocationTime'],
             'movementCount' => $cargoInfo['movementCount'],
             'locationUrl' => route('dashboard.cargo-map.location', $cargo),
-            'routeCoordinates' => $routeCoordinates,
-            'animationIntervalMs' => 900,
+            'routeWaypoints' => [$origin, $destination],
             'cargo' => $cargoInfo,
             'markers' => [
                 [
@@ -281,7 +280,7 @@ class CargoTrackingMapController extends Controller
                     'title' => $cargo->tracking_number,
                     'subtitle' => $cargoInfo['currentLocationLabel'],
                     'position' => $current,
-                    'routeCoordinates' => $routeCoordinates,
+                    'routeWaypoints' => [$origin, $destination],
                     'cargo' => $cargoInfo,
                     'searchText' => $this->searchText([
                         $cargo->tracking_number,
@@ -332,6 +331,7 @@ class CargoTrackingMapController extends Controller
         return [
             'id' => $cargo->id,
             'trackingNumber' => $cargo->tracking_number,
+            'rawStatus' => $cargo->status,
             'status' => $cargo->statusLabel(),
             'statusClass' => $cargo->statusBadgeClass(),
             'description' => $cargo->detail?->description ?: '-',
@@ -344,6 +344,7 @@ class CargoTrackingMapController extends Controller
     {
         $detail = $cargo->detail;
         $transportUser = $cargo->transportStaff?->user;
+        $latestUpdate = $cargo->locationUpdates->first();
 
         return [
             'id' => $cargo->id,
@@ -376,7 +377,7 @@ class CargoTrackingMapController extends Controller
             'pickupDate' => optional($cargo->pickup_date)->format('d M Y') ?: '-',
             'deliveryDate' => optional($cargo->delivery_date)->format('d M Y') ?: '-',
             'currentLocationLabel' => $this->currentLocationLabel($cargo),
-            'currentLocationTime' => optional($cargo->current_location_updated_at)->format('d M Y H:i') ?: '-',
+            'currentLocationTime' => optional($latestUpdate?->recorded_at ?: $cargo->current_location_updated_at)->format('d M Y H:i') ?: '-',
             'currentLatitude' => number_format((float) $current[0], 7, '.', ''),
             'currentLongitude' => number_format((float) $current[1], 7, '.', ''),
             'movementCount' => (int) ($cargo->location_updates_count ?? 0),
@@ -400,6 +401,12 @@ class CargoTrackingMapController extends Controller
 
     private function currentLocationLabel(Cargo $cargo): string
     {
+        $latestUpdate = $cargo->locationUpdates->first();
+
+        if ($latestUpdate?->location_name) {
+            return $latestUpdate->location_name;
+        }
+
         if ($cargo->current_location_city) {
             return $cargo->current_location_city;
         }
@@ -420,17 +427,22 @@ class CargoTrackingMapController extends Controller
         };
     }
 
-    private function currentCoordinates(Cargo $cargo, array $origin, array $destination, array $routeCoordinates = []): array
+    private function currentCoordinates(Cargo $cargo, array $origin, array $destination): array
     {
+        $latestUpdate = $cargo->locationUpdates->first();
+
+        if ($latestUpdate && $this->isValidPosition([(float) $latestUpdate->latitude, (float) $latestUpdate->longitude])) {
+            return [
+                (float) $latestUpdate->latitude,
+                (float) $latestUpdate->longitude,
+            ];
+        }
+
         if ($cargo->current_location_lat !== null && $cargo->current_location_lng !== null) {
             return [
                 (float) $cargo->current_location_lat,
                 (float) $cargo->current_location_lng,
             ];
-        }
-
-        if ($routeCoordinates !== []) {
-            return $routeCoordinates[array_key_last($routeCoordinates)];
         }
 
         $progress = $this->statusProgress($cargo->status);
@@ -444,26 +456,6 @@ class CargoTrackingMapController extends Controller
     private function areaCoordinates(?string $city): array
     {
         return self::AREA_COORDINATES[$city] ?? [-6.3690, 34.8888];
-    }
-
-    private function routeCoordinates(Cargo $cargo, array $origin, array $destination): array
-    {
-        $storedCoordinates = $cargo->locationUpdates
-            ->map(fn ($update) => [
-                (float) $update->latitude,
-                (float) $update->longitude,
-            ])
-            ->filter(fn (array $position) => $this->isValidPosition($position))
-            ->values()
-            ->all();
-
-        $coordinates = [$origin, ...$storedCoordinates, $destination];
-
-        return collect($coordinates)
-            ->filter(fn (array $position) => $this->isValidPosition($position))
-            ->unique(fn (array $position) => number_format($position[0], 7).','.number_format($position[1], 7))
-            ->values()
-            ->all();
     }
 
     private function isValidPosition(array $position): bool
