@@ -34,6 +34,8 @@ class AdminSeeder extends Seeder
                 'country' => 'TZ',
                 'timezone' => 'Africa/Dar_es_Salaam',
                 'is_active' => true,
+                'failed_login_attempts' => 0,
+                'login_locked_until' => null,
             ]
         );
 

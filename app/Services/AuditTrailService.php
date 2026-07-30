@@ -160,7 +160,7 @@ class AuditTrailService
             return true;
         }
 
-        if (! $isSensitivePath && ! $request->user()) {
+        if (! $isSensitivePath && ! Auth::check()) {
             return true;
         }
 
@@ -195,13 +195,21 @@ class AuditTrailService
 
     protected function resolveActor(?Request $request = null, ?Model $fallback = null): ?Model
     {
-        $requestUser = $request?->user();
+        try {
+            $requestUser = $request?->user();
+        } catch (Throwable) {
+            $requestUser = null;
+        }
 
         if ($requestUser instanceof Model) {
             return $requestUser;
         }
 
-        $authUser = Auth::user();
+        try {
+            $authUser = Auth::user();
+        } catch (Throwable) {
+            $authUser = null;
+        }
 
         if ($authUser instanceof Model) {
             return $authUser;

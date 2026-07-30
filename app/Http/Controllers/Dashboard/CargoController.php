@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -351,7 +352,7 @@ class CargoController extends Controller
     {
         $this->ensureAssignedTransporter($request->user(), $cargo);
 
-        if ($cargo->status !== Cargo::STATUS_IN_TRANSIT) {
+        if (! in_array($cargo->status, [Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB], true)) {
             return response()->json([
                 'message' => 'Only cargo in transit can receive location updates.',
             ], 422);
@@ -376,11 +377,80 @@ class CargoController extends Controller
         ]);
     }
 
+    public function regionalHubCheckpoint(Request $request, Cargo $cargo): JsonResponse
+    {
+        $this->ensureAssignedTransporter($request->user(), $cargo);
+
+        if (! in_array($cargo->status, [Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB], true)) {
+            return response()->json([
+                'message' => 'Only cargo in transit can be updated at a regional hub.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'location_name' => ['nullable', 'string', 'max:180'],
+            'update_related' => ['nullable', 'boolean'],
+        ]);
+
+        $latitude = (float) $validated['latitude'];
+        $longitude = (float) $validated['longitude'];
+        $locationName = trim((string) ($validated['location_name'] ?? ''));
+        $locationName = $locationName !== '' ? $locationName : 'Detected Regional Hub';
+        $transportStaffId = (int) $cargo->transport_staff_id;
+        $updateRelated = (bool) ($validated['update_related'] ?? true);
+        $statuses = [Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB];
+
+        $cargoes = collect([$cargo]);
+        if ($updateRelated) {
+            $cargoes = Cargo::query()
+                ->where('transport_staff_id', $transportStaffId)
+                ->whereIn('status', $statuses)
+                ->get()
+                ->filter(fn (Cargo $assignedCargo) => $this->routeContainsPoint($assignedCargo, $latitude, $longitude))
+                ->values();
+
+            if (! $cargoes->contains('id', $cargo->id)) {
+                $cargoes->push($cargo);
+            }
+        }
+
+        DB::transaction(function () use ($cargoes, $request, $locationName, $latitude, $longitude): void {
+            foreach ($cargoes as $assignedCargo) {
+                $assignedCargo->update([
+                    'status' => Cargo::STATUS_ARRIVED_REGIONAL_HUB,
+                    'current_location_city' => $locationName,
+                    'current_location_lat' => $latitude,
+                    'current_location_lng' => $longitude,
+                    'current_location_updated_at' => now(),
+                ]);
+
+                $this->recordLocationUpdate(
+                    $assignedCargo,
+                    $request->user()->id,
+                    $locationName,
+                    $latitude,
+                    $longitude,
+                    'regional_hub'
+                );
+            }
+        });
+
+        return response()->json([
+            'message' => 'Regional hub checkpoint updated.',
+            'updated_count' => $cargoes->count(),
+            'tracking_numbers' => $cargoes->pluck('tracking_number')->values(),
+            'location_name' => $locationName,
+            'updated_at' => now()->format('d M Y H:i'),
+        ]);
+    }
+
     public function markArrived(Request $request, Cargo $cargo): RedirectResponse
     {
         $this->ensureAssignedTransporter($request->user(), $cargo);
 
-        if ($cargo->status !== Cargo::STATUS_IN_TRANSIT) {
+        if (! in_array($cargo->status, [Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB], true)) {
             return back()->with('error', 'Only cargo in transit can be marked as arrived.');
         }
 
@@ -554,6 +624,24 @@ class CargoController extends Controller
             'source' => $source,
             'recorded_at' => now(),
         ]);
+    }
+
+    private function routeContainsPoint(Cargo $cargo, float $latitude, float $longitude): bool
+    {
+        $origin = self::AREA_COORDINATES[$cargo->origin_city] ?? null;
+        $destination = self::AREA_COORDINATES[$cargo->destination_city] ?? null;
+
+        if (! $origin || ! $destination) {
+            return false;
+        }
+
+        $padding = 1.25;
+        $withinLatitude = $latitude >= min($origin[0], $destination[0]) - $padding
+            && $latitude <= max($origin[0], $destination[0]) + $padding;
+        $withinLongitude = $longitude >= min($origin[1], $destination[1]) - $padding
+            && $longitude <= max($origin[1], $destination[1]) + $padding;
+
+        return $withinLatitude && $withinLongitude;
     }
 
     private function storeSampleRouteUpdates(Cargo $cargo, ?int $reportedBy): void

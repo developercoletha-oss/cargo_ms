@@ -63,6 +63,7 @@ Route::middleware(['auth'])->prefix('dashboard')->name('dashboard.')->group(func
     Route::middleware('role:transporter')->group(function () {
         Route::post('/cargo/{cargo}/sign', [CargoController::class, 'sign'])->name('cargo.sign');
         Route::post('/cargo/{cargo}/live-location', [CargoController::class, 'liveLocation'])->name('cargo.live-location');
+        Route::post('/cargo/{cargo}/regional-hub-checkpoint', [CargoController::class, 'regionalHubCheckpoint'])->name('cargo.regional-hub-checkpoint');
         Route::post('/cargo/{cargo}/mark-arrived', [CargoController::class, 'markArrived'])->name('cargo.mark-arrived');
         Route::post('/cargo/{cargo}/mark-delivered', [CargoController::class, 'markDelivered'])->name('cargo.mark-delivered');
     });

@@ -16,12 +16,14 @@ class Cargo extends Model
     public const STATUS_APPROVED = 'approved';
     public const STATUS_DISAPPROVED = 'disapproved';
     public const STATUS_IN_TRANSIT = 'in_transit';
+    public const STATUS_ARRIVED_REGIONAL_HUB = 'arrived_regional_hub';
     public const STATUS_ARRIVED = 'arrived';
     public const STATUS_DELIVERED = 'delivered';
 
     public const TRANSPORT_STATUSES = [
         self::STATUS_APPROVED,
         self::STATUS_IN_TRANSIT,
+        self::STATUS_ARRIVED_REGIONAL_HUB,
         self::STATUS_ARRIVED,
         self::STATUS_DELIVERED,
     ];
@@ -94,6 +96,7 @@ class Cargo extends Model
             self::STATUS_APPROVED => 'Approved',
             self::STATUS_DISAPPROVED => 'Disapproved',
             self::STATUS_IN_TRANSIT => 'In Transit',
+            self::STATUS_ARRIVED_REGIONAL_HUB => 'Arrived at Regional Hub',
             self::STATUS_ARRIVED => 'Arrived',
             self::STATUS_DELIVERED => 'Delivered',
             default => ucfirst(str_replace('_', ' ', (string) $this->status)),
@@ -104,6 +107,7 @@ class Cargo extends Model
     {
         return match ($this->status) {
             self::STATUS_APPROVED, self::STATUS_IN_TRANSIT => 'success',
+            self::STATUS_ARRIVED_REGIONAL_HUB => 'info',
             self::STATUS_DELIVERED => 'primary',
             self::STATUS_ARRIVED => 'info',
             self::STATUS_DISAPPROVED => 'danger',

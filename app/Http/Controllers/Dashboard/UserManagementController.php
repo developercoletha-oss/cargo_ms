@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Mail\CustomerApprovedMail;
+use App\Models\TransportStaff;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -38,7 +40,10 @@ class UserManagementController extends Controller
     {
         $validated = $this->validateUser($request);
 
-        User::create($this->mapPayload($validated, true));
+        DB::transaction(function () use ($validated): void {
+            $user = User::create($this->mapPayload($validated, true));
+            $this->ensureTransportStaffRecord($user);
+        });
 
         return redirect()
             ->route('dashboard.users.index')
@@ -50,7 +55,10 @@ class UserManagementController extends Controller
         $wasInactiveCustomer = ! $user->is_active && ($user->role === 'customer');
         $validated = $this->validateUser($request, $user->id);
 
-        $user->update($this->mapPayload($validated, false));
+        DB::transaction(function () use ($user, $validated): void {
+            $user->update($this->mapPayload($validated, false));
+            $this->ensureTransportStaffRecord($user);
+        });
 
         if ($wasInactiveCustomer && $user->is_active) {
             try {
@@ -167,5 +175,20 @@ class UserManagementController extends Controller
         }
 
         return $payload;
+    }
+
+    private function ensureTransportStaffRecord(User $user): void
+    {
+        if ($user->role !== 'transporter') {
+            return;
+        }
+
+        TransportStaff::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'staff_code' => 'TSF-'.str_pad((string) $user->id, 4, '0', STR_PAD_LEFT),
+                'is_active' => (bool) $user->is_active,
+            ]
+        );
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -36,19 +37,21 @@ class RegisterController extends Controller
             'password' => ['required', 'string', 'confirmed', 'min:8'],
         ]);
 
-        $user = User::create([
-            'full_name' => $credentials['full_name'],
-            'name' => Str::of($credentials['full_name'])->trim()->replace(' ', '.')->lower()->toString(),
-            'email' => $credentials['email'],
-            'phone' => $credentials['phone'],
-            'company_name' => $credentials['company_name'],
-            'address' => $credentials['address'],
-            'country' => 'TZ',
-            'timezone' => 'Africa/Dar_es_Salaam',
-            'role' => 'customer',
-            'is_active' => false,
-            'password' => $credentials['password'],
-        ]);
+        DB::transaction(function () use ($credentials): void {
+            User::create([
+                'full_name' => $credentials['full_name'],
+                'name' => Str::of($credentials['full_name'])->trim()->replace(' ', '.')->lower()->toString(),
+                'email' => $credentials['email'],
+                'phone' => $credentials['phone'],
+                'company_name' => $credentials['company_name'],
+                'address' => $credentials['address'],
+                'country' => 'TZ',
+                'timezone' => 'Africa/Dar_es_Salaam',
+                'role' => 'customer',
+                'is_active' => false,
+                'password' => $credentials['password'],
+            ]);
+        });
 
         return redirect()->route('login')
             ->with('status', 'Registration successful. Your account is pending admin approval.');

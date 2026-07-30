@@ -183,7 +183,15 @@
                                 <button class="btn btn-primary" type="submit"><i class="bi bi-pen me-1"></i>Sign Cargo</button>
                             </form>
                         @endif
-                        @if($isTransporter && $cargo->status === 'in_transit' && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
+                        @if($isTransporter && in_array($cargo->status, ['in_transit', 'arrived_regional_hub'], true) && $cargo->transportStaff && (int) $cargo->transportStaff->user_id === (int) $user->id)
+                            <button
+                                type="button"
+                                class="btn btn-outline-info regional-hub-checkpoint-btn"
+                                data-url="{{ route('dashboard.cargo.regional-hub-checkpoint', $cargo) }}"
+                                data-tracking-number="{{ $cargo->tracking_number }}"
+                            >
+                                <i class="bi bi-crosshair me-1"></i>Arrived at Regional Hub
+                            </button>
                             <form method="POST" action="{{ route('dashboard.cargo.mark-arrived', $cargo) }}">
                                 @csrf
                                 <button class="btn btn-info" type="submit"><i class="bi bi-geo-alt me-1"></i>Mark Arrived</button>
@@ -249,4 +257,129 @@
         </div>
     @endif
 @endforeach
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const buttons = document.querySelectorAll('.regional-hub-checkpoint-btn');
+
+    const alertUser = (title, text, icon = 'info') => {
+        if (window.Swal) {
+            Swal.fire({ title, text, icon });
+            return;
+        }
+
+        window.alert(`${title}\n${text}`);
+    };
+
+    const setBusy = (button, isBusy) => {
+        button.disabled = isBusy;
+        button.dataset.originalText = button.dataset.originalText || button.innerHTML;
+        button.innerHTML = isBusy
+            ? '<span class="spinner-border spinner-border-sm me-1"></span>Detecting...'
+            : button.dataset.originalText;
+    };
+
+    const getPosition = () => new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('This browser does not support GPS location.'));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000,
+        });
+    });
+
+    const reverseGeocode = async (latitude, longitude) => {
+        const url = new URL('https://nominatim.openstreetmap.org/reverse');
+        url.searchParams.set('format', 'jsonv2');
+        url.searchParams.set('lat', latitude);
+        url.searchParams.set('lon', longitude);
+        url.searchParams.set('zoom', '14');
+        url.searchParams.set('addressdetails', '1');
+
+        try {
+            const response = await fetch(url.toString(), {
+                headers: { Accept: 'application/json' },
+            });
+            if (!response.ok) {
+                throw new Error('Reverse geocoding failed.');
+            }
+
+            const data = await response.json();
+            const address = data.address || {};
+            const place = address.suburb || address.neighbourhood || address.city || address.town || address.village || address.state;
+
+            return place
+                ? `${place} Regional Hub`
+                : (data.display_name || `Regional Hub (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`);
+        } catch (error) {
+            return `Regional Hub (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+        }
+    };
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', async () => {
+            setBusy(button, true);
+
+            try {
+                const position = await getPosition();
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                const locationName = await reverseGeocode(latitude, longitude);
+
+                const confirmed = window.Swal
+                    ? await Swal.fire({
+                        title: 'Confirm Regional Hub',
+                        html: `<div class="text-start"><strong>Location ya Sasa:</strong><br>${locationName}<br><small>${latitude.toFixed(7)}, ${longitude.toFixed(7)}</small><hr><strong>Select Cargo to Update:</strong><br>${button.dataset.trackingNumber}<br><strong>New Status:</strong><br>Arrived at Regional Hub</div>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Confirm & Update Location',
+                    })
+                    : { isConfirmed: window.confirm(`Update ${button.dataset.trackingNumber} at ${locationName}?`) };
+
+                if (!confirmed.isConfirmed) {
+                    return;
+                }
+
+                const response = await fetch(button.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        latitude,
+                        longitude,
+                        location_name: locationName,
+                        update_related: true,
+                    }),
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Unable to update regional hub checkpoint.');
+                }
+
+                alertUser(
+                    'Location Updated',
+                    `${payload.updated_count} cargo record(s) updated at ${payload.location_name}.`,
+                    'success'
+                );
+                window.setTimeout(() => window.location.reload(), 1200);
+            } catch (error) {
+                alertUser('Location Update Failed', error.message || 'Please allow location access and try again.', 'error');
+            } finally {
+                setBusy(button, false);
+            }
+        });
+    });
+});
+</script>
 @endsection

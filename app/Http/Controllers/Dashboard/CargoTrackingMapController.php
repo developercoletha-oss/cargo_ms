@@ -162,6 +162,7 @@ class CargoTrackingMapController extends Controller
 
         if ($mode === 'transporter') {
             return $cargoes->first(fn (Cargo $cargo) => $cargo->status === Cargo::STATUS_IN_TRANSIT)
+                ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status === Cargo::STATUS_ARRIVED_REGIONAL_HUB)
                 ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status === Cargo::STATUS_APPROVED)
                 ?? $cargoes->first(fn (Cargo $cargo) => $cargo->status !== Cargo::STATUS_DELIVERED)
                 ?? $cargoes->first();
@@ -393,6 +394,7 @@ class CargoTrackingMapController extends Controller
             Cargo::STATUS_PENDING => 0.03,
             Cargo::STATUS_APPROVED => 0.12,
             Cargo::STATUS_IN_TRANSIT => 0.55,
+            Cargo::STATUS_ARRIVED_REGIONAL_HUB => 0.7,
             Cargo::STATUS_ARRIVED => 0.92,
             Cargo::STATUS_DELIVERED => 1.0,
             default => 0.0,
@@ -412,7 +414,7 @@ class CargoTrackingMapController extends Controller
         }
 
         if (
-            $cargo->status === Cargo::STATUS_IN_TRANSIT
+            in_array($cargo->status, [Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB], true)
             && $cargo->current_location_lat !== null
             && $cargo->current_location_lng !== null
         ) {
@@ -421,7 +423,7 @@ class CargoTrackingMapController extends Controller
 
         return match ($cargo->status) {
             Cargo::STATUS_PENDING, Cargo::STATUS_APPROVED => $cargo->origin_city,
-            Cargo::STATUS_IN_TRANSIT => "{$cargo->origin_city} to {$cargo->destination_city}",
+            Cargo::STATUS_IN_TRANSIT, Cargo::STATUS_ARRIVED_REGIONAL_HUB => "{$cargo->origin_city} to {$cargo->destination_city}",
             Cargo::STATUS_ARRIVED, Cargo::STATUS_DELIVERED => $cargo->destination_city,
             default => $cargo->origin_city,
         };
