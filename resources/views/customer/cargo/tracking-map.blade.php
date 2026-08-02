@@ -353,6 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div><strong>Destination:</strong> ${escapeHtml(cargo.destinationCity)} / ${escapeHtml(cargo.destinationAddress)}</div>
                 <div><strong>Current:</strong> ${escapeHtml(cargo.currentLocationLabel)}</div>
                 <div><strong>Coordinates:</strong> ${escapeHtml(cargo.currentLatitude)}, ${escapeHtml(cargo.currentLongitude)}</div>
+                <div><strong>Distance Covered:</strong> ${cargo.distanceCoveredKm !== undefined ? escapeHtml(cargo.distanceCoveredKm) : '0.00'} km</div>
+                <div><strong>Distance Remaining:</strong> ${cargo.distanceRemainingKm !== undefined ? escapeHtml(cargo.distanceRemainingKm) : '0.00'} km</div>
+                <div><strong>ETA:</strong> ${escapeHtml(cargo.etaFormatted || 'Calculating...')}</div>
                 <div><strong>Updated:</strong> ${escapeHtml(cargo.currentLocationTime)}</div>
                 <div><strong>Weight:</strong> ${escapeHtml(cargo.weightKg)} kg</div>
                 <div><strong>Quantity:</strong> ${escapeHtml(cargo.quantity)}</div>

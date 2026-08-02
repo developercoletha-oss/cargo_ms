@@ -79,6 +79,13 @@ class CargoController extends Controller
         'Zanzibar' => [-6.1659, 39.2026],
     ];
 
+    protected \App\Services\GeoService $geoService;
+
+    public function __construct(\App\Services\GeoService $geoService)
+    {
+        $this->geoService = $geoService;
+    }
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -343,7 +350,6 @@ class CargoController extends Controller
             'handover_confirmed_at' => now(),
         ]);
         $this->recordLocationUpdate($cargo, $user->id, $cargo->origin_city, (float) $cargo->current_location_lat, (float) $cargo->current_location_lng, 'handover');
-        $this->storeSampleRouteUpdates($cargo, $user->id);
 
         return redirect()->route('dashboard.cargo.index')->with('success', 'Warehouse handover confirmed. Cargo is now in transit.');
     }
@@ -363,13 +369,19 @@ class CargoController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
+        $lat = (float) $validated['latitude'];
+        $lng = (float) $validated['longitude'];
+
+        // Geocode coordinates using Nominatim API via GeoService
+        $locationName = $this->geoService->reverseGeocode($lat, $lng);
+
         $cargo->update([
-            'current_location_city' => null,
-            'current_location_lat' => $validated['latitude'],
-            'current_location_lng' => $validated['longitude'],
+            'current_location_city' => $locationName,
+            'current_location_lat' => $lat,
+            'current_location_lng' => $lng,
             'current_location_updated_at' => now(),
         ]);
-        $this->recordLocationUpdate($cargo, $request->user()->id, null, (float) $validated['latitude'], (float) $validated['longitude'], 'manual');
+        $this->recordLocationUpdate($cargo, $request->user()->id, $locationName, $lat, $lng, 'manual');
 
         return response()->json([
             'message' => 'Live location updated.',
@@ -642,38 +654,5 @@ class CargoController extends Controller
             && $longitude <= max($origin[1], $destination[1]) + $padding;
 
         return $withinLatitude && $withinLongitude;
-    }
-
-    private function storeSampleRouteUpdates(Cargo $cargo, ?int $reportedBy): void
-    {
-        if ($cargo->locationUpdates()->where('source', 'sample_route')->exists()) {
-            return;
-        }
-
-        $origin = self::AREA_COORDINATES[$cargo->origin_city] ?? null;
-        $destination = self::AREA_COORDINATES[$cargo->destination_city] ?? null;
-
-        if (! $origin || ! $destination) {
-            return;
-        }
-
-        $recordedAt = now();
-        $samplePoints = collect([0.18, 0.38, 0.58, 0.78])->map(function (float $progress, int $index) use ($origin, $destination, $cargo, $reportedBy, $recordedAt) {
-            $curve = sin($progress * pi()) * 0.18;
-
-            return [
-                'cargo_id' => $cargo->id,
-                'reported_by' => $reportedBy,
-                'location_name' => "Sample route point ".($index + 1),
-                'latitude' => $origin[0] + (($destination[0] - $origin[0]) * $progress) + $curve,
-                'longitude' => $origin[1] + (($destination[1] - $origin[1]) * $progress) - ($curve / 2),
-                'source' => 'sample_route',
-                'recorded_at' => $recordedAt->copy()->addMinutes($index + 1),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        })->all();
-
-        CargoLocationUpdate::insert($samplePoints);
     }
 }

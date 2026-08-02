@@ -149,4 +149,9 @@ class Cargo extends Model
     {
         return $this->belongsTo(User::class, 'handover_confirmed_by');
     }
+
+    public function checkpoints()
+    {
+        return $this->hasMany(CargoCheckpoint::class)->orderBy('sequence');
+    }
 }

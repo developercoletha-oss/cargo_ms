@@ -229,15 +229,15 @@
                                         </div>
                                         <div class="tracking-stat">
                                             <span>Distance Travelled</span>
-                                            <strong id="trackingDistanceTravelled">0.00 km</strong>
+                                            <strong id="trackingDistanceTravelled">{{ number_format($trackingPayload['distanceCoveredKm'], 2) }} km</strong>
                                         </div>
                                         <div class="tracking-stat">
                                             <span>Remaining Distance</span>
-                                            <strong id="trackingRemainingDistance">Calculating...</strong>
+                                            <strong id="trackingRemainingDistance">{{ number_format($trackingPayload['distanceRemainingKm'], 2) }} km</strong>
                                         </div>
                                         <div class="tracking-stat">
                                             <span>ETA</span>
-                                            <strong id="trackingEta">Calculating...</strong>
+                                            <strong id="trackingEta">{{ $trackingPayload['etaFormatted'] }}</strong>
                                         </div>
                                     </div>
                                 </div>

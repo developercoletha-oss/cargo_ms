@@ -10,6 +10,13 @@ use Illuminate\View\View;
 
 class CargoTrackingController extends Controller
 {
+    protected \App\Services\GeoService $geoService;
+
+    public function __construct(\App\Services\GeoService $geoService)
+    {
+        $this->geoService = $geoService;
+    }
+
     private const AREA_COORDINATES = [
         'Arusha' => [-3.3869, 36.6830],
         'Dar es Salaam' => [-6.7924, 39.2083],
@@ -101,12 +108,39 @@ class CargoTrackingController extends Controller
         $current = $this->currentCoordinates($cargo, $latestUpdate, $origin);
         $transportUser = $cargo->transportStaff?->user;
 
+        $distanceCoveredKm = 0.0;
+        $distanceRemainingKm = 0.0;
+        $progressPercent = 0;
+        $etaFormatted = 'Calculating...';
+
+        if ($this->isValidPosition($current)) {
+            $progressData = $this->geoService->getRouteProgress(
+                $origin,
+                $destination,
+                (float) $current[0],
+                (float) $current[1]
+            );
+            $distanceCoveredKm = $progressData['distanceCoveredKm'];
+            $distanceRemainingKm = $progressData['distanceRemainingKm'];
+            $progressPercent = $progressData['progressPercent'];
+            $etaFormatted = $progressData['etaFormatted'];
+        }
+
+        // Dynamically reverse geocode if current location city is missing
+        $currentLocation = $latestUpdate?->location_name ?: $cargo->current_location_city;
+        if (!$currentLocation && $this->isValidPosition($current)) {
+            $currentLocation = $this->geoService->reverseGeocode((float)$current[0], (float)$current[1]);
+        }
+        if (!$currentLocation) {
+            $currentLocation = $cargo->origin_city;
+        }
+
         return [
             'cargoId' => $cargo->tracking_number,
             'rawStatus' => $cargo->status,
             'status' => $cargo->statusLabel(),
             'statusClass' => $cargo->statusBadgeClass(),
-            'currentLocation' => $latestUpdate?->location_name ?: $cargo->current_location_city ?: $cargo->origin_city,
+            'currentLocation' => $currentLocation,
             'origin' => $cargo->origin_city,
             'originCoordinates' => $origin,
             'destination' => $cargo->destination_city,
@@ -122,6 +156,10 @@ class CargoTrackingController extends Controller
                 'recordedAt' => optional($latestUpdate->recorded_at)->toIso8601String(),
             ] : null,
             'locationUrl' => route('tracking.location', ['trackingNumber' => $cargo->tracking_number]),
+            'distanceCoveredKm' => $distanceCoveredKm,
+            'distanceRemainingKm' => $distanceRemainingKm,
+            'progressPercent' => $progressPercent,
+            'etaFormatted' => $etaFormatted,
         ];
     }
 

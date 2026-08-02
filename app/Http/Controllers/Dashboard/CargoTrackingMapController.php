@@ -13,6 +13,13 @@ use Illuminate\View\View;
 
 class CargoTrackingMapController extends Controller
 {
+    protected \App\Services\GeoService $geoService;
+
+    public function __construct(\App\Services\GeoService $geoService)
+    {
+        $this->geoService = $geoService;
+    }
+
     private const AREA_COORDINATES = [
         'Arusha' => [-3.3869, 36.6830],
         'Dar es Salaam' => [-6.7924, 39.2083],
@@ -347,6 +354,28 @@ class CargoTrackingMapController extends Controller
         $transportUser = $cargo->transportStaff?->user;
         $latestUpdate = $cargo->locationUpdates->first();
 
+        // Calculate real route progress
+        $originCoords = $this->areaCoordinates($cargo->origin_city);
+        $destinationCoords = $this->areaCoordinates($cargo->destination_city);
+        
+        $distanceCoveredKm = 0.0;
+        $distanceRemainingKm = 0.0;
+        $etaFormatted = 'Calculating...';
+        $progressPercent = 0;
+
+        if ($this->isValidPosition($current)) {
+            $progressData = $this->geoService->getRouteProgress(
+                $originCoords,
+                $destinationCoords,
+                (float) $current[0],
+                (float) $current[1]
+            );
+            $distanceCoveredKm = $progressData['distanceCoveredKm'];
+            $distanceRemainingKm = $progressData['distanceRemainingKm'];
+            $etaFormatted = $progressData['etaFormatted'];
+            $progressPercent = $progressData['progressPercent'];
+        }
+
         return [
             'id' => $cargo->id,
             'trackingNumber' => $cargo->tracking_number,
@@ -385,6 +414,10 @@ class CargoTrackingMapController extends Controller
             'signedAt' => optional($cargo->signed_at)->format('d M Y H:i') ?: '-',
             'handoverConfirmedAt' => optional($cargo->handover_confirmed_at)->format('d M Y H:i') ?: '-',
             'approvalNote' => $cargo->approval_note ?: '-',
+            'distanceCoveredKm' => $distanceCoveredKm,
+            'distanceRemainingKm' => $distanceRemainingKm,
+            'etaFormatted' => $etaFormatted,
+            'progressPercent' => $progressPercent,
         ];
     }
 
@@ -418,7 +451,8 @@ class CargoTrackingMapController extends Controller
             && $cargo->current_location_lat !== null
             && $cargo->current_location_lng !== null
         ) {
-            return 'Stored route location';
+            // Geocode dynamically using GeoService
+            return $this->geoService->reverseGeocode((float)$cargo->current_location_lat, (float)$cargo->current_location_lng);
         }
 
         return match ($cargo->status) {
@@ -447,12 +481,8 @@ class CargoTrackingMapController extends Controller
             ];
         }
 
-        $progress = $this->statusProgress($cargo->status);
-
-        return [
-            $origin[0] + (($destination[0] - $origin[0]) * $progress),
-            $origin[1] + (($destination[1] - $origin[1]) * $progress),
-        ];
+        // Return origin coordinates as fallback rather than fake interpolation
+        return $origin;
     }
 
     private function areaCoordinates(?string $city): array

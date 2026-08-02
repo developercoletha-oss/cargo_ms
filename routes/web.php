@@ -89,4 +89,8 @@ Route::middleware(['auth'])->prefix('dashboard')->name('dashboard.')->group(func
     });
 });
 
+Route::get('/on-track/{trackingNumber?}', function ($trackingNumber = null) {
+    return view('tracking.on-track', ['trackingNumber' => $trackingNumber]);
+})->name('tracking.on-track');
+
 Route::get('/e-learning', fn () => redirect()->route('login'))->name('e-learning');
